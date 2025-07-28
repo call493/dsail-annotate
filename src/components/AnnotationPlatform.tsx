@@ -3,9 +3,10 @@ import { ImageUploader } from "./ImageUploader";
 import { ImageCanvas } from "./ImageCanvas";
 import { AnnotationSidebar } from "./AnnotationSidebar";
 import { Toolbar } from "./Toolbar";
+import { ModelSelectionDialog } from "./ModelSelectionDialog";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
-import { Download, Play, Settings } from "lucide-react";
+import { Download, Play, Settings, Trash2 } from "lucide-react";
 
 export interface Annotation {
   id: string;
@@ -55,11 +56,11 @@ export const AnnotationPlatform = () => {
     toast.success("Image uploaded successfully");
   };
 
-  const simulateAIDetection = async () => {
+  const simulateAIDetection = async (model: string) => {
     if (!state.image) return;
     
     updateState({ isProcessing: true });
-    toast.info("Running AI object detection...");
+    toast.info(`Running ${model} detection...`);
 
     // Simulate AI processing delay
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -88,7 +89,21 @@ export const AnnotationPlatform = () => {
       annotations: mockAnnotations, 
       isProcessing: false 
     });
-    toast.success(`Detected ${mockAnnotations.length} objects`);
+    toast.success(`${model} detected ${mockAnnotations.length} objects`);
+  };
+
+  const handleRemoveImage = () => {
+    if (state.image) {
+      URL.revokeObjectURL(state.image);
+    }
+    updateState({
+      image: null,
+      imageFile: null,
+      annotations: [],
+      selectedAnnotationId: null,
+      tool: "select"
+    });
+    toast.success("Image removed");
   };
 
   const exportAnnotations = () => {
@@ -147,14 +162,15 @@ export const AnnotationPlatform = () => {
           <div className="flex items-center gap-3">
             {state.image && (
               <>
-                <Button
-                  onClick={simulateAIDetection}
-                  disabled={state.isProcessing}
-                  className="bg-primary hover:bg-primary-hover"
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  {state.isProcessing ? "Processing..." : "Run AI Detection"}
-                </Button>
+                <ModelSelectionDialog onModelSelect={simulateAIDetection}>
+                  <Button
+                    disabled={state.isProcessing}
+                    className="bg-primary hover:bg-primary-hover"
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    {state.isProcessing ? "Processing..." : "Run AI Detection"}
+                  </Button>
+                </ModelSelectionDialog>
                 
                 <Button
                   onClick={exportAnnotations}
@@ -163,6 +179,15 @@ export const AnnotationPlatform = () => {
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Export JSON
+                </Button>
+
+                <Button
+                  onClick={handleRemoveImage}
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Remove Image
                 </Button>
               </>
             )}
@@ -205,6 +230,9 @@ export const AnnotationPlatform = () => {
                 tool={state.tool}
                 onAnnotationSelect={(id) => updateState({ selectedAnnotationId: id })}
                 onAnnotationUpdate={(annotations) => updateState({ annotations })}
+                onZoomIn={() => {}}
+                onZoomOut={() => {}}
+                onResetView={() => {}}
               />
             ) : (
               <ImageUploader onImageUpload={handleImageUpload} />

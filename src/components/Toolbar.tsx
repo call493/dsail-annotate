@@ -16,9 +16,19 @@ interface ToolbarProps {
   tool: "select" | "bbox" | "edit";
   onToolChange: (tool: "select" | "bbox" | "edit") => void;
   disabled?: boolean;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onResetView?: () => void;
 }
 
-export const Toolbar = ({ tool, onToolChange, disabled = false }: ToolbarProps) => {
+export const Toolbar = ({ 
+  tool, 
+  onToolChange, 
+  disabled = false, 
+  onZoomIn, 
+  onZoomOut, 
+  onResetView 
+}: ToolbarProps) => {
   const tools = [
     {
       id: "select" as const,
@@ -83,6 +93,7 @@ export const Toolbar = ({ tool, onToolChange, disabled = false }: ToolbarProps) 
               variant="ghost"
               size="sm"
               disabled={disabled}
+              onClick={onZoomIn}
               title="Zoom In (+)"
             >
               <ZoomIn className="w-4 h-4" />
@@ -92,6 +103,7 @@ export const Toolbar = ({ tool, onToolChange, disabled = false }: ToolbarProps) 
               variant="ghost"
               size="sm"
               disabled={disabled}
+              onClick={onZoomOut}
               title="Zoom Out (-)"
             >
               <ZoomOut className="w-4 h-4" />
@@ -101,6 +113,7 @@ export const Toolbar = ({ tool, onToolChange, disabled = false }: ToolbarProps) 
               variant="ghost"
               size="sm"
               disabled={disabled}
+              onClick={onResetView}
               title="Fit to Screen (F)"
             >
               <Move className="w-4 h-4" />
@@ -110,6 +123,7 @@ export const Toolbar = ({ tool, onToolChange, disabled = false }: ToolbarProps) 
               variant="ghost"
               size="sm"
               disabled={disabled}
+              onClick={onResetView}
               title="Reset View (R)"
             >
               <RotateCcw className="w-4 h-4" />

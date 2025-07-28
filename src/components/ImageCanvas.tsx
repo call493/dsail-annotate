@@ -8,6 +8,9 @@ interface ImageCanvasProps {
   tool: "select" | "bbox" | "edit";
   onAnnotationSelect: (id: string | null) => void;
   onAnnotationUpdate: (annotations: Annotation[]) => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onResetView: () => void;
 }
 
 export const ImageCanvas = ({
@@ -16,7 +19,10 @@ export const ImageCanvas = ({
   selectedAnnotationId,
   tool,
   onAnnotationSelect,
-  onAnnotationUpdate
+  onAnnotationUpdate,
+  onZoomIn,
+  onZoomOut,
+  onResetView
 }: ImageCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,6 +32,20 @@ export const ImageCanvas = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [newBbox, setNewBbox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  // Color palette for different bounding boxes
+  const bboxColors = [
+    'hsl(220, 100%, 50%)', // Blue
+    'hsl(120, 100%, 40%)', // Green  
+    'hsl(0, 100%, 50%)',   // Red
+    'hsl(280, 100%, 50%)', // Purple
+    'hsl(35, 100%, 50%)',  // Orange
+    'hsl(180, 100%, 40%)', // Cyan
+    'hsl(60, 100%, 45%)',  // Yellow
+    'hsl(320, 100%, 50%)', // Magenta
+  ];
 
   useEffect(() => {
     const img = new Image();
@@ -77,26 +97,34 @@ export const ImageCanvas = ({
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw image
-    ctx.drawImage(imageElement, 0, 0, scaledWidth, scaledHeight);
+    // Draw image with offset
+    ctx.drawImage(imageElement, offset.x, offset.y, scaledWidth, scaledHeight);
 
     // Draw annotations
-    annotations.forEach(annotation => {
+    annotations.forEach((annotation, index) => {
       const isSelected = annotation.id === selectedAnnotationId;
       const bbox = annotation.bbox;
       
       // Scale bbox coordinates
-      const x = bbox.x * scale;
-      const y = bbox.y * scale;
+      const x = bbox.x * scale + offset.x;
+      const y = bbox.y * scale + offset.y;
       const width = bbox.width * scale;
       const height = bbox.height * scale;
 
+      // Get color for this annotation
+      const colorIndex = index % bboxColors.length;
+      const bboxColor = bboxColors[colorIndex];
+
       // Draw bounding box
-      ctx.strokeStyle = isSelected ? 
-        'hsl(var(--annotation-bbox-selected))' : 
-        'hsl(var(--annotation-bbox))';
+      ctx.strokeStyle = isSelected ? bboxColor : bboxColor;
       ctx.lineWidth = isSelected ? 3 : 2;
+      if (isSelected) {
+        ctx.setLineDash([]);
+      } else {
+        ctx.globalAlpha = 0.8;
+      }
       ctx.strokeRect(x, y, width, height);
+      ctx.globalAlpha = 1;
 
       // Draw label background
       const labelText = `${annotation.label} (${Math.round(annotation.confidence * 100)}%)`;
@@ -105,11 +133,12 @@ export const ImageCanvas = ({
       const labelWidth = textMetrics.width + 8;
       const labelHeight = 20;
 
-      ctx.fillStyle = 'hsl(var(--annotation-label-bg))';
+      // Use same color for label background with transparency
+      ctx.fillStyle = bboxColor.replace(')', ', 0.9)').replace('hsl(', 'hsla(');
       ctx.fillRect(x, y - labelHeight, labelWidth, labelHeight);
 
       // Draw label text
-      ctx.fillStyle = 'hsl(var(--annotation-label-text))';
+      ctx.fillStyle = 'white';
       ctx.fillText(labelText, x + 4, y - 6);
 
       // Draw confidence indicator
@@ -129,8 +158,8 @@ export const ImageCanvas = ({
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
       ctx.strokeRect(
-        newBbox.x * scale, 
-        newBbox.y * scale, 
+        newBbox.x * scale + offset.x, 
+        newBbox.y * scale + offset.y, 
         newBbox.width * scale, 
         newBbox.height * scale
       );
@@ -143,9 +172,32 @@ export const ImageCanvas = ({
     if (!canvas) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / scale;
-    const y = (event.clientY - rect.top) / scale;
+    const x = (event.clientX - rect.left - offset.x) / scale;
+    const y = (event.clientY - rect.top - offset.y) / scale;
     return { x, y };
+  };
+
+  const zoomIn = () => {
+    setScale(prev => Math.min(prev * 1.2, 5));
+  };
+
+  const zoomOut = () => {
+    setScale(prev => Math.max(prev / 1.2, 0.1));
+  };
+
+  const resetView = () => {
+    if (imageElement) {
+      fitImageToCanvas(imageElement);
+    }
+  };
+
+  const handleWheel = (event: React.WheelEvent) => {
+    event.preventDefault();
+    if (event.deltaY < 0) {
+      zoomIn();
+    } else {
+      zoomOut();
+    }
   };
 
   const handleCanvasClick = (event: React.MouseEvent) => {
@@ -171,6 +223,10 @@ export const ImageCanvas = ({
       setDragStart(coords);
       setIsDragging(true);
       setNewBbox({ x: coords.x, y: coords.y, width: 0, height: 0 });
+    } else if (tool === "select" && event.button === 1) { // Middle mouse button for panning
+      const coords = { x: event.clientX, y: event.clientY };
+      setPanStart(coords);
+      setIsPanning(true);
     }
   };
 
@@ -186,6 +242,16 @@ export const ImageCanvas = ({
         width: Math.abs(width),
         height: Math.abs(height)
       });
+    } else if (isPanning) {
+      const deltaX = event.clientX - panStart.x;
+      const deltaY = event.clientY - panStart.y;
+      
+      setOffset(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
+      }));
+      
+      setPanStart({ x: event.clientX, y: event.clientY });
     }
   };
 
@@ -209,6 +275,7 @@ export const ImageCanvas = ({
     
     setIsDragging(false);
     setNewBbox(null);
+    setIsPanning(false);
   };
 
   return (
@@ -219,12 +286,15 @@ export const ImageCanvas = ({
       <div className="absolute inset-0 p-5 flex items-center justify-center">
         <canvas
           ref={canvasRef}
-          className="max-w-full max-h-full cursor-crosshair shadow-lg"
+          className={`max-w-full max-h-full shadow-lg ${
+            tool === "bbox" ? "cursor-crosshair" : isPanning ? "cursor-grabbing" : "cursor-grab"
+          }`}
           onClick={handleCanvasClick}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
         />
       </div>
     </div>
