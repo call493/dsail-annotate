@@ -57,40 +57,36 @@ export const AnnotationPlatform = () => {
   };
 
   const simulateAIDetection = async (model: string) => {
-    if (!state.image) return;
-    
-    updateState({ isProcessing: true });
-    toast.info(`Running ${model} detection...`);
+  if (!state.imageFile) return;
 
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+  updateState({ isProcessing: true });
+  toast.info(`Running ${model} detection...`);
 
-    // Mock AI annotations - replace with actual AI model calls
-    const mockAnnotations: Annotation[] = [
-      {
-        id: "ai-1",
-        label: "person",
-        confidence: 0.95,
-        bbox: { x: 100, y: 150, width: 120, height: 200 },
-        source: "ai",
-        verified: false
-      },
-      {
-        id: "ai-2", 
-        label: "car",
-        confidence: 0.87,
-        bbox: { x: 300, y: 250, width: 180, height: 100 },
-        source: "ai",
-        verified: false
-      }
-    ];
+  const formData = new FormData();
+  formData.append("image", state.imageFile);
 
-    updateState({ 
-      annotations: mockAnnotations, 
-      isProcessing: false 
+  try {
+    const response = await fetch("http://localhost:5000/api/detect", {
+      method: "POST",
+      body: formData,
     });
-    toast.success(`${model} detected ${mockAnnotations.length} objects`);
-  };
+
+    if (response.ok) {
+      const result = await response.json();
+      updateState({ 
+        annotations: result.annotations, 
+        isProcessing: false 
+      });
+      toast.success(`${model} detected ${result.annotations.length} objects`);
+    } else {
+      updateState({ isProcessing: false });
+      toast.error("Detection failed");
+    }
+  } catch (error) {
+    updateState({ isProcessing: false });
+    toast.error("Could not connect to detection server");
+  }
+};
 
   const handleRemoveImage = () => {
     if (state.image) {
@@ -149,8 +145,13 @@ export const AnnotationPlatform = () => {
       <header className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
+            <img
+              src="/favicon.png"
+              alt="DSAIL Logo"
+              className="h-8 w-8 mr-2"
+            />
             <h1 className="text-xl font-semibold text-foreground">
-              AI Annotation Platform
+              DSAIL Annotate
             </h1>
             {state.imageFile && (
               <span className="text-sm text-muted-foreground">
@@ -168,7 +169,7 @@ export const AnnotationPlatform = () => {
                     className="bg-primary hover:bg-primary-hover"
                   >
                     <Play className="w-4 h-4 mr-2" />
-                    {state.isProcessing ? "Processing..." : "Run AI Detection"}
+                    {state.isProcessing ? "Processing..." : "Run Model"}
                   </Button>
                 </ModelSelectionDialog>
                 
@@ -192,9 +193,9 @@ export const AnnotationPlatform = () => {
               </>
             )}
             
-            <Button variant="ghost" size="icon">
+            {/* <Button variant="ghost" size="icon">
               <Settings className="w-4 h-4" />
-            </Button>
+            </Button> */}
           </div>
         </div>
       </header>
