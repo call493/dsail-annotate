@@ -57,36 +57,37 @@ export const AnnotationPlatform = () => {
   };
 
   const simulateAIDetection = async (model: string) => {
-  if (!state.imageFile) return;
+    if (!state.imageFile) return;
 
-  updateState({ isProcessing: true });
-  toast.info(`Running ${model} detection...`);
+    updateState({ isProcessing: true });
+    toast.info(`Running detection...`);
 
-  const formData = new FormData();
-  formData.append("image", state.imageFile);
+    const formData = new FormData();
+    formData.append("image", state.imageFile);
+    formData.append("model", model);
 
-  try {
-    const response = await fetch("http://localhost:5000/api/detect", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (response.ok) {
-      const result = await response.json();
-      updateState({ 
-        annotations: result.annotations, 
-        isProcessing: false 
+    try {
+      const response = await fetch("http://localhost:5000/api/detect", {
+        method: "POST",
+        body: formData,
       });
-      toast.success(`${model} detected ${result.annotations.length} objects`);
-    } else {
+
+      if (response.ok) {
+        const result = await response.json();
+        updateState({ 
+          annotations: result.annotations, 
+          isProcessing: false 
+        });
+        toast.success(`${result.model_used} detected ${result.annotations.length} objects`);
+      } else {
+        updateState({ isProcessing: false });
+        toast.error("Detection failed");
+      }
+    } catch (error) {
       updateState({ isProcessing: false });
-      toast.error("Detection failed");
+      toast.error("Could not connect to detection server");
     }
-  } catch (error) {
-    updateState({ isProcessing: false });
-    toast.error("Could not connect to detection server");
-  }
-};
+  };
 
   const handleRemoveImage = () => {
     if (state.image) {

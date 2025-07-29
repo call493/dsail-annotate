@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -10,48 +10,35 @@ interface ModelSelectionDialogProps {
   children: React.ReactNode;
 }
 
-const aiModels = [
-  {
-    id: "yolov8n",
-    name: "YOLOv8 Nano",
-    description: "Fast and lightweight model for real-time detection",
-    accuracy: "Medium",
-    speed: "Very Fast",
-    icon: Zap,
-    color: "bg-green-500"
-  },
-  {
-    id: "yolov8s",
-    name: "YOLOv8 Small",
-    description: "Balanced performance and accuracy",
-    accuracy: "Good",
-    speed: "Fast",
-    icon: Eye,
-    color: "bg-blue-500"
-  },
-  {
-    id: "yolov8m",
-    name: "YOLOv8 Medium",
-    description: "Higher accuracy for detailed detection",
-    accuracy: "High",
-    speed: "Medium",
-    icon: Brain,
-    color: "bg-purple-500"
-  },
-  {
-    id: "yolov8l",
-    name: "YOLOv8 Large",
-    description: "Maximum accuracy for professional use",
-    accuracy: "Very High",
-    speed: "Slow",
-    icon: Brain,
-    color: "bg-red-500"
-  }
-];
+interface AIModel {
+  id: string;
+  name: string;
+  description: string;
+}
 
 export const ModelSelectionDialog = ({ onModelSelect, children }: ModelSelectionDialogProps) => {
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [open, setOpen] = useState(false);
+  const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/models");
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableModels(data.models);
+        }
+      } catch (error) {
+        console.error("Failed to fetch models:", error);
+      }
+    };
+
+    if (open) {
+      fetchModels();
+    }
+  }, [open]);
 
   const handleRunDetection = () => {
     if (selectedModel) {
@@ -76,10 +63,10 @@ export const ModelSelectionDialog = ({ onModelSelect, children }: ModelSelection
               <SelectValue placeholder="Choose an AI model" />
             </SelectTrigger>
             <SelectContent>
-              {aiModels.map((model) => (
+              {availableModels.map((model) => (
                 <SelectItem key={model.id} value={model.id}>
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${model.color}`} />
+                    <div className="w-2 h-2 rounded-full bg-primary" />
                     {model.name}
                   </div>
                 </SelectItem>
@@ -90,15 +77,14 @@ export const ModelSelectionDialog = ({ onModelSelect, children }: ModelSelection
           {selectedModel && (
             <div className="border border-border rounded-lg p-4 space-y-3">
               {(() => {
-                const model = aiModels.find(m => m.id === selectedModel);
+                const model = availableModels.find(m => m.id === selectedModel);
                 if (!model) return null;
-                const Icon = model.icon;
                 
                 return (
                   <>
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-md ${model.color} text-white`}>
-                        <Icon className="w-4 h-4" />
+                      <div className="p-2 rounded-md bg-primary text-primary-foreground">
+                        <Brain className="w-4 h-4" />
                       </div>
                       <div>
                         <h3 className="font-medium text-foreground">{model.name}</h3>
@@ -108,10 +94,10 @@ export const ModelSelectionDialog = ({ onModelSelect, children }: ModelSelection
                     
                     <div className="flex gap-2">
                       <Badge variant="outline">
-                        Accuracy: {model.accuracy}
+                        YOLO Model
                       </Badge>
                       <Badge variant="outline">
-                        Speed: {model.speed}
+                        Ready
                       </Badge>
                     </div>
                   </>
