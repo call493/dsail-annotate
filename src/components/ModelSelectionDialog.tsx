@@ -24,14 +24,54 @@ export const ModelSelectionDialog = ({ onModelSelect, children }: ModelSelection
 
   useEffect(() => {
     const fetchModels = async () => {
+      setLoading(true);
       try {
         const response = await fetch("http://localhost:5000/api/models");
         if (response.ok) {
           const data = await response.json();
           setAvailableModels(data.models);
+        } else {
+          // Fallback models if backend is not available
+          setAvailableModels([
+            {
+              id: "mdv6-yolov9",
+              name: "MDV6 YOLOv9-C",
+              description: "General object detection model"
+            },
+            {
+              id: "mugie-grevys-plains",
+              name: "Mugie Grevy's & Plains",
+              description: "Specialized for Grevy's zebras and plains animals"
+            },
+            {
+              id: "mugie-zebra",
+              name: "Mugie Zebra",
+              description: "Specialized for zebra detection"
+            }
+          ]);
         }
       } catch (error) {
         console.error("Failed to fetch models:", error);
+        // Fallback models if backend is not available
+        setAvailableModels([
+          {
+            id: "mdv6-yolov9",
+            name: "MDV6 YOLOv9-C",
+            description: "General object detection model"
+          },
+          {
+            id: "mugie-grevys-plains",
+            name: "Mugie Grevy's & Plains",
+            description: "Specialized for Grevy's zebras and plains animals"
+          },
+          {
+            id: "mugie-zebra",
+            name: "Mugie Zebra",
+            description: "Specialized for zebra detection"
+          }
+        ]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -59,12 +99,12 @@ export const ModelSelectionDialog = ({ onModelSelect, children }: ModelSelection
         
         <div className="space-y-4">
           <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger>
-              <SelectValue placeholder="Choose an AI model" />
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder={loading ? "Loading models..." : "Choose an AI model"} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background border-border z-50">
               {availableModels.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
+                <SelectItem key={model.id} value={model.id} className="bg-background hover:bg-accent">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-primary" />
                     {model.name}
