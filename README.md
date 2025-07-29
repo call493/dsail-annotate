@@ -54,5 +54,3 @@ The frontend will start at `http://localhost:3000`.
 - **CORS errors:** Ensure `flask-cors` is installed and `CORS(app)` is present in `app.py`.
 - **Connection errors:** Make sure both backend and frontend servers are running.
 - **Model errors:** Confirm your model file is named `MDV6-yolov9-c.pt` and is in the `backend` directory.
-
----
