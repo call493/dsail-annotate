@@ -6,7 +6,7 @@ import { Toolbar } from "./Toolbar";
 import { ModelSelectionDialog } from "./ModelSelectionDialog";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
-import { Download, Play, Settings, Trash2, ChevronLeft, ChevronRight, Layers } from "lucide-react";
+import { Download, Play, Settings, Trash2 } from "lucide-react";
 
 export interface Annotation {
   id: string;
@@ -22,16 +22,10 @@ export interface Annotation {
   verified: boolean;
 }
 
-export interface ImageData {
-  id: string;
-  file: File;
-  url: string;
-  annotations: Annotation[];
-}
-
 export interface AnnotationPlatformState {
-  images: ImageData[];
-  currentImageIndex: number;
+  image: string | null;
+  imageFile: File | null;
+  annotations: Annotation[];
   selectedAnnotationId: string | null;
   isProcessing: boolean;
   tool: "select" | "bbox" | "edit";
@@ -39,8 +33,9 @@ export interface AnnotationPlatformState {
 
 export const AnnotationPlatform = () => {
   const [state, setState] = useState<AnnotationPlatformState>({
-    images: [],
-    currentImageIndex: -1,
+    image: null,
+    imageFile: null,
+    annotations: [],
     selectedAnnotationId: null,
     isProcessing: false,
     tool: "select"
@@ -50,93 +45,25 @@ export const AnnotationPlatform = () => {
     setState(prev => ({ ...prev, ...updates }));
   };
 
-  const getCurrentImage = (): ImageData | null => {
-    return state.currentImageIndex >= 0 ? state.images[state.currentImageIndex] : null;
-  };
-
-  const handleImageUpload = (files: File[]) => {
-    const newImages: ImageData[] = files.map(file => ({
-      id: `img-${Date.now()}-${Math.random()}`,
-      file,
-      url: URL.createObjectURL(file),
-      annotations: []
-    }));
-
+  const handleImageUpload = (file: File) => {
+    const imageUrl = URL.createObjectURL(file);
     updateState({ 
-      images: [...state.images, ...newImages],
-      currentImageIndex: state.images.length === 0 ? 0 : state.currentImageIndex,
+      image: imageUrl, 
+      imageFile: file, 
+      annotations: [],
       selectedAnnotationId: null 
     });
-    
-    toast.success(`${files.length} image(s) uploaded successfully`);
+    toast.success("Image uploaded successfully");
   };
 
-  const runAIDetectionOnAll = async (model: string) => {
-    if (state.images.length === 0) return;
+  const simulateAIDetection = async (model: string) => {
+    if (!state.imageFile) return;
 
     updateState({ isProcessing: true });
-    toast.info(`Running ${model} detection on ${state.images.length} images...`);
-
-    let totalDetections = 0;
-    const updatedImages = [...state.images];
-
-    for (let i = 0; i < state.images.length; i++) {
-      const image = state.images[i];
-      const formData = new FormData();
-      formData.append("image", image.file);
-      formData.append("model", model);
-
-      try {
-        const response = await fetch("http://localhost:5000/api/detect", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          updatedImages[i] = {
-            ...updatedImages[i],
-            annotations: result.annotations
-          };
-          totalDetections += result.annotations.length;
-        }
-      } catch (error) {
-        console.error(`Detection failed for image ${i + 1}:`, error);
-      }
-    }
-
-    updateState({ 
-      images: updatedImages,
-      isProcessing: false 
-    });
-    
-    toast.success(`Detection complete! Found ${totalDetections} objects across ${state.images.length} images`);
-  };
-
-  const runSpecializedDetection = async (model: string) => {
-    const currentImage = getCurrentImage();
-    if (!currentImage) return;
-
-    // Only run on objects that were detected as animals in the current image
-    const animalAnnotations = currentImage.annotations.filter(ann => 
-      ann.source === "ai" && (
-        ann.label.toLowerCase().includes("zebra") || 
-        ann.label.toLowerCase().includes("animal") ||
-        ann.label.toLowerCase().includes("horse") ||
-        ann.label.toLowerCase().includes("donkey")
-      )
-    );
-
-    if (animalAnnotations.length === 0) {
-      toast.error("No animals detected to analyze. Run general detection first.");
-      return;
-    }
-
-    updateState({ isProcessing: true });
-    toast.info(`Running specialized ${model} detection...`);
+    toast.info(`Running detection...`);
 
     const formData = new FormData();
-    formData.append("image", currentImage.file);
+    formData.append("image", state.imageFile);
     formData.append("model", model);
 
     try {
@@ -147,23 +74,14 @@ export const AnnotationPlatform = () => {
 
       if (response.ok) {
         const result = await response.json();
-        
-        // Update the current image's annotations
-        const updatedImages = [...state.images];
-        updatedImages[state.currentImageIndex] = {
-          ...currentImage,
-          annotations: [...currentImage.annotations, ...result.annotations]
-        };
-
         updateState({ 
-          images: updatedImages,
+          annotations: result.annotations, 
           isProcessing: false 
         });
-        
-        toast.success(`${result.model_used} detected ${result.annotations.length} specialized objects`);
+        toast.success(`${result.model_used} detected ${result.annotations.length} objects`);
       } else {
         updateState({ isProcessing: false });
-        toast.error("Specialized detection failed");
+        toast.error("Detection failed");
       }
     } catch (error) {
       updateState({ isProcessing: false });
@@ -172,49 +90,38 @@ export const AnnotationPlatform = () => {
   };
 
   const handleRemoveImage = () => {
-    if (state.images.length === 0) return;
-
-    const currentImage = getCurrentImage();
-    if (currentImage) {
-      URL.revokeObjectURL(currentImage.url);
+    if (state.image) {
+      URL.revokeObjectURL(state.image);
     }
-
-    const newImages = state.images.filter((_, index) => index !== state.currentImageIndex);
-    const newIndex = newImages.length === 0 ? -1 : Math.min(state.currentImageIndex, newImages.length - 1);
-
     updateState({
-      images: newImages,
-      currentImageIndex: newIndex,
+      image: null,
+      imageFile: null,
+      annotations: [],
       selectedAnnotationId: null,
       tool: "select"
     });
-    
     toast.success("Image removed");
   };
 
   const exportAnnotations = () => {
-    if (state.images.length === 0) {
-      toast.error("No images to export");
+    if (state.annotations.length === 0) {
+      toast.error("No annotations to export");
       return;
     }
 
     const exportData = {
-      images: state.images.map(img => ({
-        filename: img.file.name,
-        annotations: img.annotations.map(ann => ({
-          id: ann.id,
-          label: ann.label,
-          confidence: ann.confidence,
-          bbox: ann.bbox,
-          source: ann.source,
-          verified: ann.verified
-        })),
-        total_annotations: img.annotations.length,
-        verified_annotations: img.annotations.filter(a => a.verified).length
+      image: state.imageFile?.name || "unknown",
+      annotations: state.annotations.map(ann => ({
+        id: ann.id,
+        label: ann.label,
+        confidence: ann.confidence,
+        bbox: ann.bbox,
+        source: ann.source,
+        verified: ann.verified
       })),
       timestamp: new Date().toISOString(),
-      total_images: state.images.length,
-      total_annotations: state.images.reduce((sum, img) => sum + img.annotations.length, 0)
+      total_annotations: state.annotations.length,
+      verified_annotations: state.annotations.filter(a => a.verified).length
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], {
@@ -224,44 +131,14 @@ export const AnnotationPlatform = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `annotations_batch_${Date.now()}.json`;
+    a.download = `annotations_${Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    toast.success("Batch annotations exported successfully");
+    toast.success("Annotations exported successfully");
   };
-
-  const updateCurrentImageAnnotations = (annotations: Annotation[]) => {
-    if (state.currentImageIndex < 0) return;
-    
-    const updatedImages = [...state.images];
-    updatedImages[state.currentImageIndex] = {
-      ...updatedImages[state.currentImageIndex],
-      annotations
-    };
-    
-    updateState({ images: updatedImages });
-  };
-
-  const navigateImage = (direction: "prev" | "next") => {
-    if (state.images.length === 0) return;
-    
-    let newIndex = state.currentImageIndex;
-    if (direction === "prev") {
-      newIndex = newIndex > 0 ? newIndex - 1 : state.images.length - 1;
-    } else {
-      newIndex = newIndex < state.images.length - 1 ? newIndex + 1 : 0;
-    }
-    
-    updateState({ 
-      currentImageIndex: newIndex,
-      selectedAnnotationId: null 
-    });
-  };
-
-  const currentImage = getCurrentImage();
 
   return (
     <div className="min-h-screen bg-workspace-bg">
@@ -277,67 +154,49 @@ export const AnnotationPlatform = () => {
             <h1 className="text-xl font-semibold text-foreground">
               DSAIL Annotate
             </h1>
-            {state.images.length > 0 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Layers className="w-4 h-4" />
-                <span>{state.images.length} images</span>
-                {currentImage && (
-                  <>
-                    <span>•</span>
-                    <span>{currentImage.file.name}</span>
-                  </>
-                )}
-              </div>
+            {state.imageFile && (
+              <span className="text-sm text-muted-foreground">
+                {state.imageFile.name}
+              </span>
             )}
           </div>
           
           <div className="flex items-center gap-3">
-            {state.images.length > 0 && (
+            {state.image && (
               <>
-                <ModelSelectionDialog onModelSelect={runAIDetectionOnAll}>
+                <ModelSelectionDialog onModelSelect={simulateAIDetection}>
                   <Button
                     disabled={state.isProcessing}
                     className="bg-primary hover:bg-primary-hover"
                   >
                     <Play className="w-4 h-4 mr-2" />
-                    {state.isProcessing ? "Processing..." : "Run on All Images"}
+                    {state.isProcessing ? "Processing..." : "Run Model"}
                   </Button>
                 </ModelSelectionDialog>
-
-                {currentImage && currentImage.annotations.some(ann => 
-                  ann.source === "ai" && ann.label.toLowerCase().includes("zebra")
-                ) && (
-                  <ModelSelectionDialog onModelSelect={runSpecializedDetection}>
-                    <Button
-                      disabled={state.isProcessing}
-                      variant="outline"
-                    >
-                      <Layers className="w-4 h-4 mr-2" />
-                      Classify Zebras
-                    </Button>
-                  </ModelSelectionDialog>
-                )}
                 
                 <Button
                   onClick={exportAnnotations}
                   variant="outline"
-                  disabled={state.images.reduce((sum, img) => sum + img.annotations.length, 0) === 0}
+                  disabled={state.annotations.length === 0}
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Export All
+                  Export JSON
                 </Button>
 
                 <Button
                   onClick={handleRemoveImage}
                   variant="outline"
                   className="text-destructive hover:text-destructive"
-                  disabled={!currentImage}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Remove Current
+                  Remove Image
                 </Button>
               </>
             )}
+            
+            {/* <Button variant="ghost" size="icon">
+              <Settings className="w-4 h-4" />
+            </Button> */}
           </div>
         </div>
       </header>
@@ -347,63 +206,32 @@ export const AnnotationPlatform = () => {
         {/* Left Sidebar */}
         <div className="w-80 bg-card border-r border-border">
           <AnnotationSidebar 
-            annotations={currentImage?.annotations || []}
+            annotations={state.annotations}
             selectedId={state.selectedAnnotationId}
             onSelect={(id) => updateState({ selectedAnnotationId: id })}
-            onUpdate={updateCurrentImageAnnotations}
+            onUpdate={(annotations) => updateState({ annotations })}
           />
         </div>
 
         {/* Main Canvas Area */}
         <div className="flex-1 flex flex-col">
           {/* Toolbar */}
-          {currentImage && (
-            <>
-              <Toolbar 
-                tool={state.tool}
-                onToolChange={(tool) => updateState({ tool })}
-                disabled={!currentImage}
-              />
-
-              {/* Image Navigation */}
-              {state.images.length > 1 && (
-                <div className="bg-card border-b border-border px-6 py-2 flex items-center justify-between">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigateImage("prev")}
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Previous
-                  </Button>
-                  
-                  <span className="text-sm text-muted-foreground">
-                    {state.currentImageIndex + 1} of {state.images.length}
-                  </span>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigateImage("next")}
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
+          <Toolbar 
+            tool={state.tool}
+            onToolChange={(tool) => updateState({ tool })}
+            disabled={!state.image}
+          />
 
           {/* Canvas */}
           <div className="flex-1 p-6">
-            {currentImage ? (
+            {state.image ? (
               <ImageCanvas
-                image={currentImage.url}
-                annotations={currentImage.annotations}
+                image={state.image}
+                annotations={state.annotations}
                 selectedAnnotationId={state.selectedAnnotationId}
                 tool={state.tool}
                 onAnnotationSelect={(id) => updateState({ selectedAnnotationId: id })}
-                onAnnotationUpdate={updateCurrentImageAnnotations}
+                onAnnotationUpdate={(annotations) => updateState({ annotations })}
                 onZoomIn={() => {}}
                 onZoomOut={() => {}}
                 onResetView={() => {}}

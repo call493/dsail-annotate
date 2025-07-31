@@ -4,54 +4,41 @@ import { Upload, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
 interface ImageUploaderProps {
-  onImageUpload: (files: File[]) => void;
+  onImageUpload: (file: File) => void;
 }
 
 export const ImageUploader = ({ onImageUpload }: ImageUploaderProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    const validFiles: File[] = [];
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) {
-        toast.error(`${file.name} is not a valid image file`);
-        continue;
-      }
-
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        toast.error(`${file.name} is too large (max 10MB)`);
-        continue;
-      }
-
-      validFiles.push(file);
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file");
+      return;
     }
 
-    if (validFiles.length > 0) {
-      onImageUpload(validFiles);
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      toast.error("Image size must be less than 10MB");
+      return;
     }
+
+    onImageUpload(file);
   };
 
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
-    const files = Array.from(event.dataTransfer.files);
+    const file = event.dataTransfer.files[0];
     
-    if (files.length === 0) return;
+    if (!file) return;
     
-    const validFiles: File[] = [];
-    for (const file of files) {
-      if (!file.type.startsWith("image/")) {
-        toast.error(`${file.name} is not a valid image file`);
-        continue;
-      }
-      validFiles.push(file);
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please drop a valid image file");
+      return;
     }
 
-    if (validFiles.length > 0) {
-      onImageUpload(validFiles);
-    }
+    onImageUpload(file);
   };
 
   const handleDragOver = (event: React.DragEvent) => {
@@ -75,8 +62,8 @@ export const ImageUploader = ({ onImageUpload }: ImageUploaderProps) => {
           </h3>
           
           <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
-            Drag and drop images here, or click to browse your files. 
-            Supports multiple JPG, PNG, WebP formats up to 10MB each.
+            Drag and drop an image here, or click to browse your files. 
+            Supports JPG, PNG, WebP formats up to 10MB.
           </p>
 
           <Button 
@@ -84,14 +71,13 @@ export const ImageUploader = ({ onImageUpload }: ImageUploaderProps) => {
             className="bg-primary hover:bg-primary-hover"
           >
             <Upload className="w-4 h-4 mr-2" />
-            Choose Images
+            Choose Image
           </Button>
 
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            multiple
             onChange={handleFileSelect}
             className="hidden"
           />

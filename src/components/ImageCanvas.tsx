@@ -13,12 +13,6 @@ interface ImageCanvasProps {
   onResetView: () => void;
 }
 
-interface ResizeHandle {
-  position: "nw" | "ne" | "sw" | "se" | "n" | "s" | "e" | "w";
-  x: number;
-  y: number;
-}
-
 export const ImageCanvas = ({
   image,
   annotations,
@@ -40,10 +34,6 @@ export const ImageCanvas = ({
   const [newBbox, setNewBbox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0 });
-  const [originalBbox, setOriginalBbox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // Color palette for different bounding boxes
   const bboxColors = [
@@ -160,29 +150,6 @@ export const ImageCanvas = ({
       
       ctx.fillStyle = confidenceColor;
       ctx.fillRect(x + width - 6, y, 6, 6);
-
-      // Draw resize handles for selected annotation
-      if (isSelected && tool === "select") {
-        const handleSize = 8;
-        const handles = [
-          { pos: "nw", x: x - handleSize/2, y: y - handleSize/2 },
-          { pos: "ne", x: x + width - handleSize/2, y: y - handleSize/2 },
-          { pos: "sw", x: x - handleSize/2, y: y + height - handleSize/2 },
-          { pos: "se", x: x + width - handleSize/2, y: y + height - handleSize/2 },
-          { pos: "n", x: x + width/2 - handleSize/2, y: y - handleSize/2 },
-          { pos: "s", x: x + width/2 - handleSize/2, y: y + height - handleSize/2 },
-          { pos: "w", x: x - handleSize/2, y: y + height/2 - handleSize/2 },
-          { pos: "e", x: x + width - handleSize/2, y: y + height/2 - handleSize/2 }
-        ];
-
-        handles.forEach(handle => {
-          ctx.fillStyle = 'white';
-          ctx.fillRect(handle.x, handle.y, handleSize, handleSize);
-          ctx.strokeStyle = bboxColor;
-          ctx.lineWidth = 2;
-          ctx.strokeRect(handle.x, handle.y, handleSize, handleSize);
-        });
-      }
     });
 
     // Draw new bbox being created
@@ -208,32 +175,6 @@ export const ImageCanvas = ({
     const x = (event.clientX - rect.left - offset.x) / scale;
     const y = (event.clientY - rect.top - offset.y) / scale;
     return { x, y };
-  };
-
-  const getResizeHandle = (coords: { x: number; y: number }, annotation: Annotation) => {
-    const bbox = annotation.bbox;
-    const handleSize = 8 / scale; // Account for canvas scaling
-    
-    const handles = [
-      { pos: "nw", x: bbox.x, y: bbox.y },
-      { pos: "ne", x: bbox.x + bbox.width, y: bbox.y },
-      { pos: "sw", x: bbox.x, y: bbox.y + bbox.height },
-      { pos: "se", x: bbox.x + bbox.width, y: bbox.y + bbox.height },
-      { pos: "n", x: bbox.x + bbox.width/2, y: bbox.y },
-      { pos: "s", x: bbox.x + bbox.width/2, y: bbox.y + bbox.height },
-      { pos: "w", x: bbox.x, y: bbox.y + bbox.height/2 },
-      { pos: "e", x: bbox.x + bbox.width, y: bbox.y + bbox.height/2 }
-    ];
-
-    for (const handle of handles) {
-      if (coords.x >= handle.x - handleSize/2 && 
-          coords.x <= handle.x + handleSize/2 &&
-          coords.y >= handle.y - handleSize/2 && 
-          coords.y <= handle.y + handleSize/2) {
-        return handle.pos;
-      }
-    }
-    return null;
   };
 
   const zoomIn = () => {
@@ -277,31 +218,15 @@ export const ImageCanvas = ({
   };
 
   const handleMouseDown = (event: React.MouseEvent) => {
-    const coords = getCanvasCoordinates(event);
-    
     if (tool === "bbox") {
+      const coords = getCanvasCoordinates(event);
       setDragStart(coords);
       setIsDragging(true);
       setNewBbox({ x: coords.x, y: coords.y, width: 0, height: 0 });
-    } else if (tool === "select") {
-      // Check if clicking on a resize handle
-      const selectedAnnotation = annotations.find(ann => ann.id === selectedAnnotationId);
-      if (selectedAnnotation) {
-        const handle = getResizeHandle(coords, selectedAnnotation);
-        if (handle) {
-          setIsResizing(true);
-          setResizeHandle(handle);
-          setResizeStart(coords);
-          setOriginalBbox(selectedAnnotation.bbox);
-          return;
-        }
-      }
-      
-      if (event.button === 1) { // Middle mouse button for panning
-        const panCoords = { x: event.clientX, y: event.clientY };
-        setPanStart(panCoords);
-        setIsPanning(true);
-      }
+    } else if (tool === "select" && event.button === 1) { // Middle mouse button for panning
+      const coords = { x: event.clientX, y: event.clientY };
+      setPanStart(coords);
+      setIsPanning(true);
     }
   };
 
@@ -317,66 +242,6 @@ export const ImageCanvas = ({
         width: Math.abs(width),
         height: Math.abs(height)
       });
-    } else if (isResizing && originalBbox && resizeHandle) {
-      const coords = getCanvasCoordinates(event);
-      const deltaX = coords.x - resizeStart.x;
-      const deltaY = coords.y - resizeStart.y;
-      
-      let newBbox = { ...originalBbox };
-      
-      switch (resizeHandle) {
-        case "nw":
-          newBbox.x = originalBbox.x + deltaX;
-          newBbox.y = originalBbox.y + deltaY;
-          newBbox.width = originalBbox.width - deltaX;
-          newBbox.height = originalBbox.height - deltaY;
-          break;
-        case "ne":
-          newBbox.y = originalBbox.y + deltaY;
-          newBbox.width = originalBbox.width + deltaX;
-          newBbox.height = originalBbox.height - deltaY;
-          break;
-        case "sw":
-          newBbox.x = originalBbox.x + deltaX;
-          newBbox.width = originalBbox.width - deltaX;
-          newBbox.height = originalBbox.height + deltaY;
-          break;
-        case "se":
-          newBbox.width = originalBbox.width + deltaX;
-          newBbox.height = originalBbox.height + deltaY;
-          break;
-        case "n":
-          newBbox.y = originalBbox.y + deltaY;
-          newBbox.height = originalBbox.height - deltaY;
-          break;
-        case "s":
-          newBbox.height = originalBbox.height + deltaY;
-          break;
-        case "w":
-          newBbox.x = originalBbox.x + deltaX;
-          newBbox.width = originalBbox.width - deltaX;
-          break;
-        case "e":
-          newBbox.width = originalBbox.width + deltaX;
-          break;
-      }
-      
-      // Ensure minimum size
-      if (newBbox.width < 10) {
-        newBbox.width = 10;
-        if (resizeHandle.includes("w")) newBbox.x = originalBbox.x + originalBbox.width - 10;
-      }
-      if (newBbox.height < 10) {
-        newBbox.height = 10;
-        if (resizeHandle.includes("n")) newBbox.y = originalBbox.y + originalBbox.height - 10;
-      }
-      
-      // Update the annotation
-      const updatedAnnotations = annotations.map(ann => 
-        ann.id === selectedAnnotationId ? { ...ann, bbox: newBbox } : ann
-      );
-      onAnnotationUpdate(updatedAnnotations);
-      
     } else if (isPanning) {
       const deltaX = event.clientX - panStart.x;
       const deltaY = event.clientY - panStart.y;
@@ -411,9 +276,6 @@ export const ImageCanvas = ({
     setIsDragging(false);
     setNewBbox(null);
     setIsPanning(false);
-    setIsResizing(false);
-    setResizeHandle(null);
-    setOriginalBbox(null);
   };
 
   return (
