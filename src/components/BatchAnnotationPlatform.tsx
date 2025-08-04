@@ -1,0 +1,342 @@
+import { useState, useCallback } from "react";
+import { BatchImageUploader } from "./BatchImageUploader";
+import { ImageGrid } from "./ImageGrid";
+import { ImageCanvas } from "./ImageCanvas";
+import { AnnotationSidebar } from "./AnnotationSidebar";
+import { Toolbar } from "./Toolbar";
+import { BatchProgress } from "./BatchProgress";
+import { ModelSelectionDialog } from "./ModelSelectionDialog";
+import { ImageData, BatchAnnotationState } from "../types/batch";
+import { useBatchProcessing } from "../hooks/useBatchProcessing";
+import { toast } from "sonner";
+import { Button } from "./ui/button";
+import { Download, Play, Trash2, RotateCcw, Grid, Image as ImageIcon } from "lucide-react";
+
+export const BatchAnnotationPlatform = () => {
+  const [state, setState] = useState<BatchAnnotationState>({
+    images: [],
+    currentImageId: null,
+    batchProgress: { total: 0, completed: 0, failed: 0, processing: 0, percentage: 0 },
+    isProcessing: false,
+    selectedModel: null
+  });
+
+  const [tool, setTool] = useState<"select" | "bbox" | "edit">("select");
+  const [showGrid, setShowGrid] = useState(true);
+
+  const { isProcessing, calculateProgress, processBatch, retryFailed } = useBatchProcessing();
+
+  const updateState = (updates: Partial<BatchAnnotationState>) => {
+    setState(prev => ({ ...prev, ...updates }));
+  };
+
+  const updateImage = useCallback((id: string, updates: Partial<ImageData>) => {
+    setState(prev => {
+      const newImages = prev.images.map(img => 
+        img.id === id ? { ...img, ...updates } : img
+      );
+      const newProgress = calculateProgress(newImages);
+      
+      return {
+        ...prev,
+        images: newImages,
+        batchProgress: newProgress,
+        isProcessing: isProcessing
+      };
+    });
+  }, [calculateProgress, isProcessing]);
+
+  const handleImagesUpload = (files: File[]) => {
+    const newImages: ImageData[] = files.map(file => ({
+      id: crypto.randomUUID(),
+      file,
+      url: URL.createObjectURL(file),
+      annotations: [],
+      status: 'pending' as const,
+      progress: 0,
+      name: file.name,
+      size: file.size,
+      lastModified: file.lastModified
+    }));
+
+    const allImages = [...state.images, ...newImages];
+    const progress = calculateProgress(allImages);
+
+    updateState({
+      images: allImages,
+      batchProgress: progress,
+      currentImageId: allImages[0]?.id || null
+    });
+
+    toast.success(`${files.length} images uploaded successfully`);
+  };
+
+  const handleImageSelect = (imageId: string) => {
+    updateState({ currentImageId: imageId });
+  };
+
+  const getCurrentImage = (): ImageData | null => {
+    return state.images.find(img => img.id === state.currentImageId) || null;
+  };
+
+  const handleBatchProcess = async (model: string) => {
+    if (state.images.length === 0) {
+      toast.error("No images to process");
+      return;
+    }
+
+    updateState({ selectedModel: model, isProcessing: true });
+    await processBatch(state.images, model, updateImage);
+    updateState({ isProcessing: false });
+  };
+
+  const handleRetryFailed = async () => {
+    if (!state.selectedModel) {
+      toast.error("No model selected");
+      return;
+    }
+
+    updateState({ isProcessing: true });
+    await retryFailed(state.images, state.selectedModel, updateImage);
+    updateState({ isProcessing: false });
+  };
+
+  const handleRemoveAllImages = () => {
+    // Clean up object URLs
+    state.images.forEach(img => URL.revokeObjectURL(img.url));
+    
+    updateState({
+      images: [],
+      currentImageId: null,
+      batchProgress: { total: 0, completed: 0, failed: 0, processing: 0, percentage: 0 },
+      selectedModel: null
+    });
+    
+    toast.success("All images removed");
+  };
+
+  const handleAnnotationUpdate = (annotations: any[]) => {
+    if (!state.currentImageId) return;
+    updateImage(state.currentImageId, { annotations });
+  };
+
+  const exportAllAnnotations = () => {
+    const completedImages = state.images.filter(img => img.status === 'completed' && img.annotations.length > 0);
+    
+    if (completedImages.length === 0) {
+      toast.error("No completed annotations to export");
+      return;
+    }
+
+    const exportData = {
+      batch_info: {
+        total_images: state.images.length,
+        completed_images: completedImages.length,
+        model_used: state.selectedModel,
+        timestamp: new Date().toISOString()
+      },
+      annotations: completedImages.map(img => ({
+        image_name: img.name,
+        image_id: img.id,
+        file_size: img.size,
+        annotations: img.annotations,
+        annotation_count: img.annotations.length,
+        verified_count: img.annotations.filter(a => a.verified).length
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json"
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `batch_annotations_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast.success(`Exported annotations for ${completedImages.length} images`);
+  };
+
+  const currentImage = getCurrentImage();
+
+  return (
+    <div className="min-h-screen bg-workspace-bg">
+      {/* Header */}
+      <header className="bg-card border-b border-border px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <img src="/favicon.png" alt="DSAIL Logo" className="h-8 w-8 mr-2" />
+            <h1 className="text-xl font-semibold text-foreground">DSAIL Batch Annotate</h1>
+            {state.images.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                {state.images.length} images • {currentImage?.name || 'No selection'}
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {state.images.length > 0 && (
+              <>
+                <Button
+                  onClick={() => setShowGrid(!showGrid)}
+                  variant="outline"
+                  size="sm"
+                >
+                  {showGrid ? <ImageIcon className="w-4 h-4 mr-2" /> : <Grid className="w-4 h-4 mr-2" />}
+                  {showGrid ? "Single View" : "Grid View"}
+                </Button>
+
+                <ModelSelectionDialog onModelSelect={handleBatchProcess}>
+                  <Button
+                    disabled={isProcessing}
+                    className="bg-primary hover:bg-primary-hover"
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    {isProcessing ? "Processing..." : "Run Batch Detection"}
+                  </Button>
+                </ModelSelectionDialog>
+
+                {state.batchProgress.failed > 0 && (
+                  <Button
+                    onClick={handleRetryFailed}
+                    variant="outline"
+                    disabled={isProcessing}
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Retry Failed
+                  </Button>
+                )}
+                
+                <Button
+                  onClick={exportAllAnnotations}
+                  variant="outline"
+                  disabled={state.batchProgress.completed === 0}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export All
+                </Button>
+
+                <Button
+                  onClick={handleRemoveAllImages}
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear All
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Progress Bar */}
+      {state.images.length > 0 && (
+        <div className="px-6 py-3 bg-muted/30">
+          <BatchProgress progress={state.batchProgress} isProcessing={isProcessing} />
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex h-[calc(100vh-140px)]">
+        {state.images.length === 0 ? (
+          <div className="flex-1">
+            <BatchImageUploader onImagesUpload={handleImagesUpload} />
+          </div>
+        ) : showGrid ? (
+          // Grid View Layout
+          <>
+            {/* Left: Image Grid */}
+            <div className="w-80 bg-card border-r border-border">
+              <ImageGrid
+                images={state.images}
+                currentImageId={state.currentImageId}
+                onImageSelect={handleImageSelect}
+              />
+            </div>
+
+            {/* Right: Current Image and Annotations */}
+            <div className="flex-1 flex flex-col">
+              {currentImage && (
+                <>
+                  <Toolbar 
+                    tool={tool}
+                    onToolChange={setTool}
+                    disabled={false}
+                  />
+                  
+                  <div className="flex flex-1">
+                    <div className="flex-1 p-6">
+                      <ImageCanvas
+                        image={currentImage.url}
+                        annotations={currentImage.annotations}
+                        selectedAnnotationId={null}
+                        tool={tool}
+                        onAnnotationSelect={() => {}}
+                        onAnnotationUpdate={handleAnnotationUpdate}
+                        onZoomIn={() => {}}
+                        onZoomOut={() => {}}
+                        onResetView={() => {}}
+                      />
+                    </div>
+                    
+                    <div className="w-80 bg-card border-l border-border">
+                      <AnnotationSidebar
+                        annotations={currentImage.annotations}
+                        selectedId={null}
+                        onSelect={() => {}}
+                        onUpdate={handleAnnotationUpdate}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        ) : (
+          // Single Image View Layout
+          <div className="flex-1 flex flex-col">
+            {currentImage && (
+              <>
+                <Toolbar 
+                  tool={tool}
+                  onToolChange={setTool}
+                  disabled={false}
+                />
+                
+                <div className="flex flex-1">
+                  <div className="w-80 bg-card border-r border-border">
+                    <AnnotationSidebar
+                      annotations={currentImage.annotations}
+                      selectedId={null}
+                      onSelect={() => {}}
+                      onUpdate={handleAnnotationUpdate}
+                    />
+                  </div>
+                  
+                  <div className="flex-1 p-6">
+                    <ImageCanvas
+                      image={currentImage.url}
+                      annotations={currentImage.annotations}
+                      selectedAnnotationId={null}
+                      tool={tool}
+                      onAnnotationSelect={() => {}}
+                      onAnnotationUpdate={handleAnnotationUpdate}
+                      onZoomIn={() => {}}
+                      onZoomOut={() => {}}
+                      onResetView={() => {}}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

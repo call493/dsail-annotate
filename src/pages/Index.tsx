@@ -1,7 +1,7 @@
-import { AnnotationPlatform } from "@/components/AnnotationPlatform";
+import { BatchAnnotationPlatform } from "@/components/BatchAnnotationPlatform";
 
 const Index = () => {
-  return <AnnotationPlatform />;
+  return <BatchAnnotationPlatform />;
 };
 
 export default Index;
