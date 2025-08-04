@@ -56,7 +56,8 @@ export const BatchAnnotationPlatform = () => {
       progress: 0,
       name: file.name,
       size: file.size,
-      lastModified: file.lastModified
+      lastModified: file.lastModified,
+      selected: true // Default to selected
     }));
 
     const allImages = [...state.images, ...newImages];
@@ -75,18 +76,36 @@ export const BatchAnnotationPlatform = () => {
     updateState({ currentImageId: imageId });
   };
 
+  const handleImageToggleSelection = (imageId: string) => {
+    setState(prev => ({
+      ...prev,
+      images: prev.images.map(img => 
+        img.id === imageId ? { ...img, selected: !img.selected } : img
+      )
+    }));
+  };
+
+  const handleToggleAllSelection = () => {
+    const allSelected = state.images.every(img => img.selected);
+    setState(prev => ({
+      ...prev,
+      images: prev.images.map(img => ({ ...img, selected: !allSelected }))
+    }));
+  };
+
   const getCurrentImage = (): ImageData | null => {
     return state.images.find(img => img.id === state.currentImageId) || null;
   };
 
   const handleBatchProcess = async (model: string) => {
-    if (state.images.length === 0) {
-      toast.error("No images to process");
+    const selectedImages = state.images.filter(img => img.selected);
+    if (selectedImages.length === 0) {
+      toast.error("No images selected for processing");
       return;
     }
 
     updateState({ selectedModel: model, isProcessing: true });
-    await processBatch(state.images, model, updateImage);
+    await processBatch(selectedImages, model, updateImage);
     updateState({ isProcessing: false });
   };
 
@@ -256,6 +275,8 @@ export const BatchAnnotationPlatform = () => {
                 images={state.images}
                 currentImageId={state.currentImageId}
                 onImageSelect={handleImageSelect}
+                onImageToggleSelection={handleImageToggleSelection}
+                onToggleAllSelection={handleToggleAllSelection}
               />
             </div>
 

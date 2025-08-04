@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { ImageData } from "../types/batch";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
+import { Checkbox } from "./ui/checkbox";
+import { Button } from "./ui/button";
 import { Search, CheckCircle, Clock, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -9,9 +11,11 @@ interface ImageGridProps {
   images: ImageData[];
   currentImageId: string | null;
   onImageSelect: (imageId: string) => void;
+  onImageToggleSelection: (imageId: string) => void;
+  onToggleAllSelection: () => void;
 }
 
-export const ImageGrid = ({ images, currentImageId, onImageSelect }: ImageGridProps) => {
+export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggleSelection, onToggleAllSelection }: ImageGridProps) => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredImages = useMemo(() => {
@@ -19,6 +23,14 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect }: ImageGridPr
       image.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [images, searchTerm]);
+
+  const selectedCount = useMemo(() => 
+    images.filter(img => img.selected).length, 
+    [images]
+  );
+
+  const allSelected = selectedCount === images.length;
+  const someSelected = selectedCount > 0 && selectedCount < images.length;
 
   const getStatusIcon = (status: ImageData['status']) => {
     switch (status) {
@@ -59,8 +71,30 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect }: ImageGridPr
             className="pl-10"
           />
         </div>
-        <div className="mt-2 text-sm text-muted-foreground">
-          {filteredImages.length} of {images.length} images
+        <div className="mt-3 flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            {filteredImages.length} of {images.length} images
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-muted-foreground">
+              {selectedCount} selected
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={onToggleAllSelection}
+                className={someSelected ? "data-[state=checked]:bg-primary/50" : ""}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleAllSelection}
+                className="h-auto p-0 text-sm"
+              >
+                {allSelected ? "Deselect All" : "Select All"}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -79,12 +113,21 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect }: ImageGridPr
               )}
             >
               {/* Image Thumbnail */}
-              <div className="aspect-square overflow-hidden rounded-t-lg bg-muted">
+              <div className="aspect-square overflow-hidden rounded-t-lg bg-muted relative">
                 <img
                   src={image.url}
                   alt={image.name}
                   className="w-full h-full object-cover transition-transform group-hover:scale-105"
                 />
+                {/* Selection Checkbox */}
+                <div className="absolute top-2 left-2">
+                  <Checkbox
+                    checked={image.selected}
+                    onCheckedChange={() => onImageToggleSelection(image.id)}
+                    className="bg-background/80 backdrop-blur-sm"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
               </div>
 
               {/* Image Info */}

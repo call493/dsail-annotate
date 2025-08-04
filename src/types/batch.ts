@@ -10,6 +10,7 @@ export interface ImageData {
   name: string;
   size: number;
   lastModified: number;
+  selected: boolean;
 }
 
 export interface BatchProgress {
