@@ -42,16 +42,20 @@ export const useBatchProcessing = () => {
 
       clearInterval(progressInterval);
 
-      if (response.ok) {
-        const result = await response.json();
-        updateImage(imageData.id, {
-          status: 'completed',
-          progress: 100,
-          annotations: result.annotations || []
-        });
-      } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (!response.ok) {
+        if (response.status === 0 || !response.status) {
+          throw new Error("Backend server is not running. Please start the Flask server on port 5000.");
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Detection failed: ${response.statusText}`);
       }
+
+      const result = await response.json();
+      updateImage(imageData.id, {
+        status: 'completed',
+        progress: 100,
+        annotations: result.annotations || []
+      });
     } catch (error) {
       updateImage(imageData.id, {
         status: 'failed',

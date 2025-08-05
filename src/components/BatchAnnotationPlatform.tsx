@@ -104,6 +104,17 @@ export const BatchAnnotationPlatform = () => {
       return;
     }
 
+    // Check if backend is available
+    try {
+      const healthCheck = await fetch('/api/models');
+      if (!healthCheck.ok) {
+        throw new Error('Backend not available');
+      }
+    } catch (error) {
+      toast.error("Backend server not available. Please start the Flask backend server (python app.py) and ensure your .pt model files are in the backend folder.");
+      return;
+    }
+
     updateState({ selectedModel: model, isProcessing: true });
     await processBatch(selectedImages, model, updateImage);
     updateState({ isProcessing: false });
