@@ -264,12 +264,6 @@ export const BatchAnnotationPlatform = () => {
         </div>
       </header>
 
-      {/* Progress Bar */}
-      {state.images.length > 0 && (
-        <div className="px-6 py-3 bg-muted/30">
-          <BatchProgress progress={state.batchProgress} isProcessing={isProcessing} />
-        </div>
-      )}
 
       {/* Main Content */}
       <div className="flex h-[calc(100vh-140px)]">
@@ -369,6 +363,9 @@ export const BatchAnnotationPlatform = () => {
           </div>
         )}
       </div>
+
+      {/* Progress Overlay */}
+      <BatchProgress progress={state.batchProgress} isProcessing={isProcessing} />
     </div>
   );
 };
