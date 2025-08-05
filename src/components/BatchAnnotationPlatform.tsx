@@ -13,6 +13,7 @@ import { Button } from "./ui/button";
 import { Download, Play, Trash2, RotateCcw, Grid, Image as ImageIcon } from "lucide-react";
 
 export const BatchAnnotationPlatform = () => {
+  const [showProgress, setShowProgress] = useState(false);
   const [state, setState] = useState<BatchAnnotationState>({
     images: [],
     currentImageId: null,
@@ -24,7 +25,7 @@ export const BatchAnnotationPlatform = () => {
   const [tool, setTool] = useState<"select" | "bbox" | "edit">("select");
   const [showGrid, setShowGrid] = useState(true);
 
-  const { isProcessing, calculateProgress, processBatch, retryFailed } = useBatchProcessing();
+  const { isProcessing, calculateProgress, processBatch, retryFailed, cancelProcessing } = useBatchProcessing();
 
   const updateState = (updates: Partial<BatchAnnotationState>) => {
     setState(prev => ({ ...prev, ...updates }));
@@ -116,6 +117,7 @@ export const BatchAnnotationPlatform = () => {
     }
 
     updateState({ selectedModel: model, isProcessing: true });
+    setShowProgress(true);
     await processBatch(selectedImages, model, updateImage);
     updateState({ isProcessing: false });
   };
@@ -365,7 +367,14 @@ export const BatchAnnotationPlatform = () => {
       </div>
 
       {/* Progress Overlay */}
-      <BatchProgress progress={state.batchProgress} isProcessing={isProcessing} />
+      {showProgress && (
+        <BatchProgress 
+          progress={state.batchProgress} 
+          isProcessing={isProcessing}
+          onClose={() => setShowProgress(false)}
+          onCancel={cancelProcessing}
+        />
+      )}
     </div>
   );
 };

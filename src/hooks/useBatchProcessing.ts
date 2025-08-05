@@ -5,6 +5,7 @@ import { toast } from "sonner";
 export const useBatchProcessing = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingQueue, setProcessingQueue] = useState<string[]>([]);
+  const [shouldCancel, setShouldCancel] = useState(false);
 
   const calculateProgress = (images: ImageData[]): BatchProgress => {
     const total = images.length;
@@ -21,6 +22,7 @@ export const useBatchProcessing = () => {
     model: string,
     updateImage: (id: string, updates: Partial<ImageData>) => void
   ): Promise<void> => {
+    if (shouldCancel) return;
     try {
       updateImage(imageData.id, { status: 'processing', progress: 0 });
 
@@ -85,6 +87,11 @@ export const useBatchProcessing = () => {
     try {
       // Process images in batches with limited concurrency
       for (let i = 0; i < pendingImages.length; i += concurrency) {
+        if (shouldCancel) {
+          toast.info("Batch processing cancelled");
+          break;
+        }
+        
         const batch = pendingImages.slice(i, i + concurrency);
         
         await Promise.all(
@@ -94,16 +101,19 @@ export const useBatchProcessing = () => {
         );
       }
 
-      const finalProgress = calculateProgress(images);
-      toast.success(
-        `Batch processing complete! ${finalProgress.completed} successful, ${finalProgress.failed} failed`
-      );
+      if (!shouldCancel) {
+        const finalProgress = calculateProgress(images);
+        toast.success(
+          `Batch processing complete! ${finalProgress.completed} successful, ${finalProgress.failed} failed`
+        );
+      }
     } catch (error) {
       toast.error("Batch processing encountered an error");
       console.error("Batch processing error:", error);
     } finally {
       setIsProcessing(false);
       setProcessingQueue([]);
+      setShouldCancel(false);
     }
   }, [isProcessing]);
 
@@ -128,11 +138,18 @@ export const useBatchProcessing = () => {
     await processBatch(images, model, updateImage);
   }, [processBatch]);
 
+  const cancelProcessing = useCallback(() => {
+    setShouldCancel(true);
+    setIsProcessing(false);
+    toast.info("Cancelling batch processing...");
+  }, []);
+
   return {
     isProcessing,
     processingQueue,
     calculateProgress,
     processBatch,
-    retryFailed
+    retryFailed,
+    cancelProcessing
   };
 };
