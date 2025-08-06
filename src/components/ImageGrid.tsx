@@ -59,12 +59,9 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
   return (
     <div className="h-full flex flex-col bg-card">
       {/* Simplified Header */}
-      <div className="p-4 border-b border-border bg-gradient-to-r from-card to-muted/30">
+      <div className="p-3 border-b border-border bg-card">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="text-lg font-semibold text-foreground">
-              {filteredImages.length} images
-            </div>
+          <div className="flex items-center gap-3">
             {selectedCount > 0 && (
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
@@ -77,7 +74,7 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
             )}
           </div>
           
-          <div className="flex items-center gap-3 p-2 rounded-lg bg-background/50 border border-border/50">
+          <div className="flex items-center gap-2">
             <Checkbox
               checked={allSelected}
               onCheckedChange={onToggleAllSelection}
@@ -90,7 +87,7 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
               variant="ghost"
               size="sm"
               onClick={onToggleAllSelection}
-              className="h-7 px-3 text-sm font-medium hover:bg-primary/10 transition-colors"
+              className="h-6 px-2 text-sm font-medium hover:bg-primary/10 transition-colors"
             >
               {allSelected ? "Deselect All" : "Select All"}
             </Button>
@@ -98,41 +95,38 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
         </div>
       </div>
 
-      {/* Large Square Image Grid */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+      {/* Compact Square Image Grid */}
+      <div className="flex-1 overflow-auto p-3">
+        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
           {filteredImages.map((image) => (
             <div
               key={image.id}
               onClick={() => onImageSelect(image.id)}
               className={cn(
-                "group relative cursor-pointer rounded-xl border-2 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1",
-                "bg-card backdrop-blur-sm overflow-hidden",
+                "group relative cursor-pointer border-2 transition-all duration-200 hover:shadow-lg",
+                "bg-card overflow-hidden",
                 currentImageId === image.id
-                  ? "border-primary ring-4 ring-primary/20 shadow-lg shadow-primary/20"
-                  : "border-border/60 hover:border-primary/70",
-                image.selected && "ring-2 ring-accent/30"
+                  ? "border-primary ring-2 ring-primary/20"
+                  : "border-border hover:border-primary/50",
+                image.selected && "ring-2 ring-primary/40"
               )}
             >
-              {/* Image Thumbnail with Enhanced Overlay */}
-              <div className="aspect-square overflow-hidden bg-gradient-to-br from-muted/50 to-muted relative">
+              {/* Image Thumbnail */}
+              <div className="aspect-square overflow-hidden bg-muted relative">
                 <img
                   src={image.url}
                   alt={image.name}
-                  className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
+                  className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                 />
                 
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
                 {/* Selection Checkbox */}
-                <div className="absolute top-3 left-3 z-10">
+                <div className="absolute top-2 left-2 z-10">
                   <Checkbox
                     checked={image.selected}
                     onCheckedChange={() => onImageToggleSelection(image.id)}
                     className={cn(
-                      "bg-background/90 backdrop-blur-sm border-2 shadow-lg transition-all duration-200",
-                      "hover:bg-background hover:scale-110",
+                      "bg-background/90 backdrop-blur-sm border shadow-md transition-all duration-200",
+                      "hover:bg-background hover:scale-105",
                       image.selected && "border-primary"
                     )}
                     onClick={(e) => e.stopPropagation()}
@@ -141,51 +135,41 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
                 
                 {/* Current Image Indicator */}
                 {currentImageId === image.id && (
-                  <div className="absolute top-3 right-3 z-10">
-                    <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center shadow-lg ring-2 ring-background">
-                      <CheckCircle className="w-4 h-4 text-primary-foreground" />
+                  <div className="absolute top-2 right-2 z-10">
+                    <div className="w-5 h-5 bg-primary flex items-center justify-center shadow-md">
+                      <CheckCircle className="w-3 h-3 text-primary-foreground" />
                     </div>
                   </div>
                 )}
-              </div>
 
-              {/* Status and Annotations Only */}
-              <div className="absolute bottom-3 left-3 right-3 z-10">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/90 backdrop-blur-sm border border-border/20 shadow-sm">
+                {/* Status Badge */}
+                <div className="absolute bottom-2 left-2 z-10">
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "text-xs font-medium border-0 px-1.5 py-0.5 shadow-sm",
+                      getStatusColor(image.status)
+                    )}
+                  >
                     {getStatusIcon(image.status)}
-                    <Badge 
-                      variant="outline" 
-                      className={cn(
-                        "text-xs font-medium border-0 px-2 py-0.5",
-                        getStatusColor(image.status)
-                      )}
-                    >
-                      {image.status}
+                  </Badge>
+                </div>
+
+                {/* Annotation Count */}
+                {image.annotations.length > 0 && (
+                  <div className="absolute bottom-2 right-2 z-10">
+                    <Badge className="bg-primary/90 text-primary-foreground text-xs px-1.5 py-0.5 shadow-sm">
+                      {image.annotations.length}
                     </Badge>
                   </div>
-                  {image.annotations.length > 0 && (
-                    <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/90 text-primary-foreground backdrop-blur-sm shadow-sm">
-                      <span className="text-xs font-medium">
-                        {image.annotations.length}
-                      </span>
-                      <span className="text-xs opacity-90">
-                        {image.annotations.length === 1 ? 'object' : 'objects'}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                )}
 
                 {/* Progress Bar for Processing */}
                 {image.status === 'processing' && (
-                  <div className="mt-2 space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-background/80">Processing...</span>
-                      <span className="text-xs font-medium text-background">{image.progress}%</span>
-                    </div>
-                    <div className="w-full bg-background/20 rounded-full h-1.5 overflow-hidden">
+                  <div className="absolute inset-x-0 bottom-0 z-10">
+                    <div className="w-full bg-background/80 h-1">
                       <div
-                        className="bg-primary h-full rounded-full transition-all duration-500 ease-out"
+                        className="bg-primary h-full transition-all duration-500 ease-out"
                         style={{ width: `${image.progress}%` }}
                       />
                     </div>
