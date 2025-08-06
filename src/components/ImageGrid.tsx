@@ -1,10 +1,9 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { ImageData } from "../types/batch";
-import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
-import { Search, CheckCircle, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ImageGridProps {
@@ -16,13 +15,7 @@ interface ImageGridProps {
 }
 
 export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggleSelection, onToggleAllSelection }: ImageGridProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredImages = useMemo(() => {
-    return images.filter(image => 
-      image.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [images, searchTerm]);
+  const filteredImages = images;
 
   const selectedCount = useMemo(() => 
     images.filter(img => img.selected).length, 
@@ -60,61 +53,44 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
 
   return (
     <div className="h-full flex flex-col bg-card">
-      {/* Enhanced Search Header */}
-      <div className="p-6 border-b border-border bg-gradient-to-r from-card to-muted/30">
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input
-              placeholder="Search images by name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-11 h-11 bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary transition-all duration-200"
-            />
+      {/* Simplified Header */}
+      <div className="p-4 border-b border-border bg-gradient-to-r from-card to-muted/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="text-lg font-semibold text-foreground">
+              {filteredImages.length} images
+            </div>
+            {selectedCount > 0 && (
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                {selectedCount} selected
+              </Badge>
+            )}
           </div>
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="text-sm font-medium text-foreground">
-                {filteredImages.length} of {images.length} images
-              </div>
-              {filteredImages.length !== images.length && (
-                <Badge variant="outline" className="text-xs">
-                  Filtered
-                </Badge>
+          <div className="flex items-center gap-3 p-2 rounded-lg bg-background/50 border border-border/50">
+            <Checkbox
+              checked={allSelected}
+              onCheckedChange={onToggleAllSelection}
+              className={cn(
+                "transition-all duration-200",
+                someSelected && "data-[state=checked]:bg-primary/70"
               )}
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-muted-foreground">
-                <span className="font-medium text-primary">{selectedCount}</span> selected
-              </div>
-              <div className="flex items-center gap-3 p-2 rounded-lg bg-background/50 border border-border/50">
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={onToggleAllSelection}
-                  className={cn(
-                    "transition-all duration-200",
-                    someSelected && "data-[state=checked]:bg-primary/70"
-                  )}
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onToggleAllSelection}
-                  className="h-7 px-2 text-xs font-medium hover:bg-primary/10 transition-colors"
-                >
-                  {allSelected ? "Deselect All" : "Select All"}
-                </Button>
-              </div>
-            </div>
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleAllSelection}
+              className="h-7 px-3 text-sm font-medium hover:bg-primary/10 transition-colors"
+            >
+              {allSelected ? "Deselect All" : "Select All"}
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Enhanced Image Grid */}
+      {/* Large Square Image Grid */}
       <div className="flex-1 overflow-auto p-6">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {filteredImages.map((image) => (
             <div
               key={image.id}
@@ -224,25 +200,11 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
           ))}
         </div>
 
-        {filteredImages.length === 0 && searchTerm && (
+        {filteredImages.length === 0 && images.length === 0 && (
           <div className="text-center py-16 px-6">
             <div className="max-w-sm mx-auto">
               <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                <Search className="w-8 h-8 text-muted-foreground/50" />
-              </div>
-              <h3 className="text-lg font-medium text-foreground mb-2">No images found</h3>
-              <p className="text-muted-foreground">
-                No images match your search for <span className="font-medium text-foreground">"{searchTerm}"</span>
-              </p>
-            </div>
-          </div>
-        )}
-        
-        {filteredImages.length === 0 && !searchTerm && images.length === 0 && (
-          <div className="text-center py-16 px-6">
-            <div className="max-w-sm mx-auto">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                <Search className="w-8 h-8 text-muted-foreground/50" />
+                <CheckCircle className="w-8 h-8 text-muted-foreground/50" />
               </div>
               <h3 className="text-lg font-medium text-foreground mb-2">No images uploaded</h3>
               <p className="text-muted-foreground">
