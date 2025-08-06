@@ -22,6 +22,11 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
     [images]
   );
 
+  const totalSelectedSize = useMemo(() => 
+    images.filter(img => img.selected).reduce((total, img) => total + img.size, 0),
+    [images]
+  );
+
   const allSelected = selectedCount === images.length;
   const someSelected = selectedCount > 0 && selectedCount < images.length;
 
@@ -61,9 +66,14 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
               {filteredImages.length} images
             </div>
             {selectedCount > 0 && (
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                {selectedCount} selected
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                  {selectedCount} selected
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  ({(totalSelectedSize / 1024 / 1024).toFixed(1)} MB)
+                </span>
+              </div>
             )}
           </div>
           
@@ -139,57 +149,43 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
                 )}
               </div>
 
-              {/* Enhanced Image Info */}
-              <div className="p-4 space-y-3 bg-card/95 backdrop-blur-sm">
+              {/* Status and Annotations Only */}
+              <div className="absolute bottom-3 left-3 right-3 z-10">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/50">
-                      {getStatusIcon(image.status)}
-                      <Badge 
-                        variant="outline" 
-                        className={cn(
-                          "text-xs font-medium border-0 px-2 py-0.5",
-                          getStatusColor(image.status)
-                        )}
-                      >
-                        {image.status}
-                      </Badge>
-                    </div>
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/90 backdrop-blur-sm border border-border/20 shadow-sm">
+                    {getStatusIcon(image.status)}
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        "text-xs font-medium border-0 px-2 py-0.5",
+                        getStatusColor(image.status)
+                      )}
+                    >
+                      {image.status}
+                    </Badge>
                   </div>
                   {image.annotations.length > 0 && (
-                    <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary">
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/90 text-primary-foreground backdrop-blur-sm shadow-sm">
                       <span className="text-xs font-medium">
                         {image.annotations.length}
                       </span>
-                      <span className="text-xs opacity-75">
+                      <span className="text-xs opacity-90">
                         {image.annotations.length === 1 ? 'object' : 'objects'}
                       </span>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-1">
-                  <div 
-                    className="text-sm font-medium text-foreground truncate leading-tight" 
-                    title={image.name}
-                  >
-                    {image.name}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {(image.size / 1024 / 1024).toFixed(1)} MB
-                  </div>
-                </div>
-
-                {/* Enhanced Progress Bar for Processing */}
+                {/* Progress Bar for Processing */}
                 {image.status === 'processing' && (
-                  <div className="space-y-1">
+                  <div className="mt-2 space-y-1">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">Processing...</span>
-                      <span className="text-xs font-medium text-primary">{image.progress}%</span>
+                      <span className="text-xs text-background/80">Processing...</span>
+                      <span className="text-xs font-medium text-background">{image.progress}%</span>
                     </div>
-                    <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                    <div className="w-full bg-background/20 rounded-full h-1.5 overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-primary to-primary-hover h-full rounded-full transition-all duration-500 ease-out"
+                        className="bg-primary h-full rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${image.progress}%` }}
                       />
                     </div>
