@@ -54,89 +54,71 @@ export const Toolbar = ({
   ];
 
   return (
-    <div className="bg-card border-b border-border px-4 py-2">
+    <div className="bg-card border-b border-border px-4 py-1.5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {/* Drawing Tools */}
-          <div className="flex items-center gap-1">
-            {tools.map((toolItem) => {
-              const Icon = toolItem.icon;
-              const isActive = tool === toolItem.id;
-              
-              return (
-                <Button
-                  key={toolItem.id}
-                  variant={isActive ? "default" : "ghost"}
-                  size="sm"
-                  disabled={disabled}
-                  onClick={() => onToolChange(toolItem.id)}
-                  className={`relative ${isActive ? "bg-primary hover:bg-primary-hover" : ""}`}
-                  title={`${toolItem.description} (${toolItem.shortcut})`}
-                >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {toolItem.label}
-                  {isActive && (
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                      {toolItem.shortcut}
-                    </Badge>
-                  )}
-                </Button>
-              );
-            })}
-          </div>
+          {tools.map((toolItem) => {
+            const Icon = toolItem.icon;
+            const isActive = tool === toolItem.id;
+            
+            return (
+              <Button
+                key={toolItem.id}
+                variant={isActive ? "default" : "ghost"}
+                size="sm"
+                disabled={disabled}
+                onClick={() => onToolChange(toolItem.id)}
+                className={`h-8 px-3 ${isActive ? "bg-primary hover:bg-primary-hover" : ""}`}
+                title={`${toolItem.description} (${toolItem.shortcut})`}
+              >
+                <Icon className="w-4 h-4" />
+              </Button>
+            );
+          })}
 
-          <Separator orientation="vertical" className="h-6 mx-2" />
+          <Separator orientation="vertical" className="h-5 mx-2" />
 
           {/* View Tools */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={disabled}
-              onClick={onZoomIn}
-              title="Zoom In (+)"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={disabled}
-              onClick={onZoomOut}
-              title="Zoom Out (-)"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={disabled}
-              onClick={onResetView}
-              title="Fit to Screen (F)"
-            >
-              <Move className="w-4 h-4" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={disabled}
-              onClick={onResetView}
-              title="Reset View (R)"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            onClick={onZoomIn}
+            title="Zoom In (+)"
+            className="h-8 px-2"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            onClick={onZoomOut}
+            title="Zoom Out (-)"
+            className="h-8 px-2"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            onClick={onResetView}
+            title="Reset View (R)"
+            className="h-8 px-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
         </div>
 
-        {/* Instructions */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Info className="w-4 h-4" />
-          {tool === "select" && "Click annotations to select and edit"}
-          {tool === "bbox" && "Click and drag to create bounding boxes"}
-          {tool === "edit" && "Double-click annotations to modify"}
+        {/* Minimal Instructions */}
+        <div className="text-xs text-muted-foreground">
+          {tool === "select" && "Select"}
+          {tool === "bbox" && "Draw"}
+          {tool === "edit" && "Edit"}
         </div>
       </div>
     </div>

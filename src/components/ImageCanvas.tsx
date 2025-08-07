@@ -79,7 +79,7 @@ export const ImageCanvas = ({
       newScale = containerHeight / img.height;
     }
     
-    setScale(Math.min(newScale, 1)); // Don't scale up beyond original size
+    setScale(Math.min(newScale, 1)); // Fit to container initially
     setOffset({ x: 0, y: 0 });
   };
 
@@ -178,7 +178,7 @@ export const ImageCanvas = ({
   };
 
   const zoomIn = () => {
-    setScale(prev => Math.min(prev * 1.2, 5));
+    setScale(prev => Math.min(prev * 1.2, 10)); // Allow zoom up to 10x
   };
 
   const zoomOut = () => {
