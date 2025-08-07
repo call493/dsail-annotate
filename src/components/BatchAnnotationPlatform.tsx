@@ -269,7 +269,7 @@ export const BatchAnnotationPlatform = () => {
 
 
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-140px)]">
+      <div className="flex h-[calc(100vh-80px)]">
         {state.images.length === 0 ? (
           <div className="flex-1">
             <BatchImageUploader onImagesUpload={handleImagesUpload} />
