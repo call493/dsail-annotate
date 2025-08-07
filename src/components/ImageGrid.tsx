@@ -120,14 +120,14 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
                 />
                 
                 {/* Selection Checkbox */}
-                <div className="absolute top-2 left-2 z-10">
+                <div className="absolute top-1 left-1 z-10">
                   <Checkbox
                     checked={image.selected}
-                    onCheckedChange={() => onImageToggleSelection(image.id)}
+                    onCheckedChange={(checked) => onImageToggleSelection(image.id)}
                     className={cn(
-                      "bg-background/90 backdrop-blur-sm border shadow-md transition-all duration-200",
+                      "h-4 w-4 bg-background/90 backdrop-blur-sm border shadow-md transition-all duration-200",
                       "hover:bg-background hover:scale-105",
-                      image.selected && "border-primary"
+                      image.selected && "border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                     )}
                     onClick={(e) => e.stopPropagation()}
                   />

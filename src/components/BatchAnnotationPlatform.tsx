@@ -200,9 +200,9 @@ export const BatchAnnotationPlatform = () => {
       {/* Header */}
       <header className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src="/favicon.png" alt="DSAIL Logo" className="h-8 w-8 mr-2" />
-            <h1 className="text-xl font-semibold text-foreground">DSAIL Batch Annotate</h1>
+          <div className="flex items-center gap-3">
+            <img src="/favicon.png" alt="DSAIL Logo" className="h-8 w-8" />
+            <h1 className="text-xl font-semibold text-foreground">DSAIL Annotate</h1>
             {state.images.length > 0 && (
               <span className="text-sm text-muted-foreground">
                 {state.images.length} images • {currentImage?.name || 'No selection'}
