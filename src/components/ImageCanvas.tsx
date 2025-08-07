@@ -178,7 +178,7 @@ export const ImageCanvas = ({
   };
 
   const zoomIn = () => {
-    setScale(prev => Math.min(prev * 1.2, 2)); // Limited zoom
+    setScale(prev => Math.min(prev * 1.2, 5));
   };
 
   const zoomOut = () => {

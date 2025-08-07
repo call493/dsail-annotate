@@ -269,7 +269,7 @@ export const BatchAnnotationPlatform = () => {
 
 
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-80px)]">
+      <div className="flex h-[calc(100vh-140px)]">
         {state.images.length === 0 ? (
           <div className="flex-1">
             <BatchImageUploader onImagesUpload={handleImagesUpload} />
@@ -303,36 +303,30 @@ export const BatchAnnotationPlatform = () => {
                       disabled={false}
                     />
                     
-                    <PanelGroup direction="horizontal">
-                      <Panel defaultSize={75}>
-                        <div className="flex-1 p-6">
-                          <ImageCanvas
-                            image={currentImage.url}
-                            annotations={currentImage.annotations}
-                            selectedAnnotationId={null}
-                            tool={tool}
-                            onAnnotationSelect={() => {}}
-                            onAnnotationUpdate={handleAnnotationUpdate}
-                            onZoomIn={() => {}}
-                            onZoomOut={() => {}}
-                            onResetView={() => {}}
-                          />
-                        </div>
-                      </Panel>
+                    <div className="flex flex-1">
+                      <div className="flex-1 p-6">
+                        <ImageCanvas
+                          image={currentImage.url}
+                          annotations={currentImage.annotations}
+                          selectedAnnotationId={null}
+                          tool={tool}
+                          onAnnotationSelect={() => {}}
+                          onAnnotationUpdate={handleAnnotationUpdate}
+                          onZoomIn={() => {}}
+                          onZoomOut={() => {}}
+                          onResetView={() => {}}
+                        />
+                      </div>
                       
-                      <PanelResizeHandle className="w-1 bg-border hover:bg-border/80 transition-colors" />
-                      
-                      <Panel defaultSize={25} minSize={15} maxSize={40}>
-                        <div className="h-full bg-card border-l border-border">
-                          <AnnotationSidebar
-                            annotations={currentImage.annotations}
-                            selectedId={null}
-                            onSelect={() => {}}
-                            onUpdate={handleAnnotationUpdate}
-                          />
-                        </div>
-                      </Panel>
-                    </PanelGroup>
+                      <div className="w-80 bg-card border-l border-border">
+                        <AnnotationSidebar
+                          annotations={currentImage.annotations}
+                          selectedId={null}
+                          onSelect={() => {}}
+                          onUpdate={handleAnnotationUpdate}
+                        />
+                      </div>
+                    </div>
                   </>
                 )}
               </div>
