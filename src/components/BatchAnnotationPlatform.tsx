@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { BatchImageUploader } from "./BatchImageUploader";
 import { ImageGrid } from "./ImageGrid";
 import { ImageCanvas } from "./ImageCanvas";
@@ -201,7 +202,7 @@ export const BatchAnnotationPlatform = () => {
       <header className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/favicon.png" alt="DSAIL Logo" className="h-8 w-8" />
+            <img src="/dsail annotate.png" alt="DSAIL Logo" className="h-8 w-8" />
             <h1 className="text-xl font-semibold text-foreground">DSAIL Annotate</h1>
             {state.images.length > 0 && (
               <span className="text-sm text-muted-foreground">
@@ -275,56 +276,62 @@ export const BatchAnnotationPlatform = () => {
           </div>
         ) : showGrid ? (
           // Grid View Layout
-          <>
-            {/* Left: Image Grid */}
-            <div className="w-80 bg-card border-r border-border">
-              <ImageGrid
-                images={state.images}
-                currentImageId={state.currentImageId}
-                onImageSelect={handleImageSelect}
-                onImageToggleSelection={handleImageToggleSelection}
-                onToggleAllSelection={handleToggleAllSelection}
-              />
-            </div>
-
-            {/* Right: Current Image and Annotations */}
-            <div className="flex-1 flex flex-col">
-              {currentImage && (
-                <>
-                  <Toolbar 
-                    tool={tool}
-                    onToolChange={setTool}
-                    disabled={false}
-                  />
-                  
-                  <div className="flex flex-1">
-                    <div className="flex-1 p-6">
-                      <ImageCanvas
-                        image={currentImage.url}
-                        annotations={currentImage.annotations}
-                        selectedAnnotationId={null}
-                        tool={tool}
-                        onAnnotationSelect={() => {}}
-                        onAnnotationUpdate={handleAnnotationUpdate}
-                        onZoomIn={() => {}}
-                        onZoomOut={() => {}}
-                        onResetView={() => {}}
-                      />
-                    </div>
+          <PanelGroup direction="horizontal">
+            {/* Left: Resizable Image Grid */}
+            <Panel defaultSize={25} minSize={20} maxSize={50}>
+              <div className="h-full bg-card border-r border-border">
+                <ImageGrid
+                  images={state.images}
+                  currentImageId={state.currentImageId}
+                  onImageSelect={handleImageSelect}
+                  onImageToggleSelection={handleImageToggleSelection}
+                  onToggleAllSelection={handleToggleAllSelection}
+                />
+              </div>
+            </Panel>
+            
+            <PanelResizeHandle className="w-1 bg-border hover:bg-border/80 transition-colors" />
+            
+            <Panel defaultSize={75}>
+              {/* Right: Current Image and Annotations */}
+              <div className="flex-1 flex flex-col">
+                {currentImage && (
+                  <>
+                    <Toolbar 
+                      tool={tool}
+                      onToolChange={setTool}
+                      disabled={false}
+                    />
                     
-                    <div className="w-80 bg-card border-l border-border">
-                      <AnnotationSidebar
-                        annotations={currentImage.annotations}
-                        selectedId={null}
-                        onSelect={() => {}}
-                        onUpdate={handleAnnotationUpdate}
-                      />
+                    <div className="flex flex-1">
+                      <div className="flex-1 p-6">
+                        <ImageCanvas
+                          image={currentImage.url}
+                          annotations={currentImage.annotations}
+                          selectedAnnotationId={null}
+                          tool={tool}
+                          onAnnotationSelect={() => {}}
+                          onAnnotationUpdate={handleAnnotationUpdate}
+                          onZoomIn={() => {}}
+                          onZoomOut={() => {}}
+                          onResetView={() => {}}
+                        />
+                      </div>
+                      
+                      <div className="w-80 bg-card border-l border-border">
+                        <AnnotationSidebar
+                          annotations={currentImage.annotations}
+                          selectedId={null}
+                          onSelect={() => {}}
+                          onUpdate={handleAnnotationUpdate}
+                        />
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </>
+                  </>
+                )}
+              </div>
+            </Panel>
+          </PanelGroup>
         ) : (
           // Single Image View Layout
           <div className="flex-1 flex flex-col">

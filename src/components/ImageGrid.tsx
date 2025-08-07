@@ -97,7 +97,7 @@ export const ImageGrid = ({ images, currentImageId, onImageSelect, onImageToggle
 
       {/* Compact Square Image Grid */}
       <div className="flex-1 overflow-auto p-3">
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1">
           {filteredImages.map((image) => (
             <div
               key={image.id}
