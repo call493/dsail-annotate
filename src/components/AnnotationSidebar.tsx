@@ -34,7 +34,6 @@ export const AnnotationSidebar = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
 
-  const verifiedCount = annotations.filter(a => a.verified).length;
   const aiCount = annotations.filter(a => a.source === "ai").length;
   const manualCount = annotations.filter(a => a.source === "manual").length;
 
@@ -83,23 +82,17 @@ export const AnnotationSidebar = ({
   return (
     <div className="h-full flex flex-col">
       {/* Statistics Header */}
-      <div className="p-4 border-b border-border">
+      <div className="p-4 border-b border-border w-[92%] mx-auto">
         <h2 className="text-lg font-semibold text-foreground mb-3">
           Annotations
         </h2>
         
-        <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="grid grid-cols-1 gap-2 mb-3">
           <div className="bg-muted/50 rounded-lg p-2 text-center">
             <div className="text-lg font-bold text-foreground">
               {annotations.length}
             </div>
             <div className="text-xs text-muted-foreground">Total</div>
-          </div>
-          <div className="bg-success/10 rounded-lg p-2 text-center">
-            <div className="text-lg font-bold text-success">
-              {verifiedCount}
-            </div>
-            <div className="text-xs text-muted-foreground">Verified</div>
           </div>
         </div>
 
@@ -128,7 +121,7 @@ export const AnnotationSidebar = ({
             {annotations.map((annotation) => (
               <Card 
                 key={annotation.id}
-                className={`cursor-pointer transition-all hover:shadow-md ${
+                className={`cursor-pointer transition-all hover:shadow-md max-w-[92%] mx-auto ${
                   selectedId === annotation.id 
                     ? "ring-2 ring-primary bg-primary/5" 
                     : ""
@@ -186,13 +179,6 @@ export const AnnotationSidebar = ({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      {annotation.verified ? (
-                        <Check className="w-4 h-4 text-success" />
-                      ) : (
-                        <X className="w-4 h-4 text-muted-foreground" />
-                      )}
-                    </div>
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
@@ -232,10 +218,15 @@ export const AnnotationSidebar = ({
                       className="h-6 w-6 p-0"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleVerify(annotation.id, !annotation.verified);
+                        const isVisible = annotation.visible !== false;
+                        const updated = annotations.map(a => 
+                          a.id === annotation.id ? { ...a, visible: !isVisible } : a
+                        );
+                        onUpdate(updated);
+                        toast.success(!isVisible ? "Bounding box shown" : "Bounding box hidden");
                       }}
                     >
-                      {annotation.verified ? (
+                      {annotation.visible !== false ? (
                         <EyeOff className="w-3 h-3" />
                       ) : (
                         <Eye className="w-3 h-3" />

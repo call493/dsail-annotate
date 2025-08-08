@@ -173,8 +173,7 @@ export const BatchAnnotationPlatform = () => {
         image_id: img.id,
         file_size: img.size,
         annotations: img.annotations,
-        annotation_count: img.annotations.length,
-        verified_count: img.annotations.filter(a => a.verified).length
+        annotation_count: img.annotations.length
       }))
     };
 

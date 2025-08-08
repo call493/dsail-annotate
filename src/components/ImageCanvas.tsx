@@ -102,6 +102,9 @@ export const ImageCanvas = ({
 
     // Draw annotations
     annotations.forEach((annotation, index) => {
+      // Skip hidden annotations
+      if (annotation.visible === false) return;
+
       const isSelected = annotation.id === selectedAnnotationId;
       const bbox = annotation.bbox;
       
@@ -265,7 +268,7 @@ export const ImageCanvas = ({
           confidence: 1.0,
           bbox: newBbox,
           source: "manual",
-          verified: true
+          visible: true
         };
         
         onAnnotationUpdate([...annotations, newAnnotation]);

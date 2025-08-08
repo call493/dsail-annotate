@@ -19,7 +19,7 @@ export interface Annotation {
     height: number;
   };
   source: "ai" | "manual";
-  verified: boolean;
+  visible?: boolean;
 }
 
 export interface AnnotationPlatformState {
@@ -74,11 +74,15 @@ export const AnnotationPlatform = () => {
 
       if (response.ok) {
         const result = await response.json();
+        const mapped = (result.annotations || []).map((ann: any) => ({
+          ...ann,
+          visible: true
+        }));
         updateState({ 
-          annotations: result.annotations, 
+          annotations: mapped, 
           isProcessing: false 
         });
-        toast.success(`${result.model_used} detected ${result.annotations.length} objects`);
+        toast.success(`${result.model_used} detected ${mapped.length} objects`);
       } else {
         updateState({ isProcessing: false });
         toast.error("Detection failed");
@@ -116,12 +120,10 @@ export const AnnotationPlatform = () => {
         label: ann.label,
         confidence: ann.confidence,
         bbox: ann.bbox,
-        source: ann.source,
-        verified: ann.verified
+        source: ann.source
       })),
       timestamp: new Date().toISOString(),
-      total_annotations: state.annotations.length,
-      verified_annotations: state.annotations.filter(a => a.verified).length
+      total_annotations: state.annotations.length
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], {
