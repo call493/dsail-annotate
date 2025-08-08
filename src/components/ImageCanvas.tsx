@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useImperativeHandle, forwardRef } from "react";
 import { Annotation } from "./AnnotationPlatform";
 
 interface ImageCanvasProps {
@@ -13,7 +13,14 @@ interface ImageCanvasProps {
   onResetView: () => void;
 }
 
-export const ImageCanvas = ({
+export type ImageCanvasHandle = {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetView: () => void;
+  setPanMode: (active: boolean) => void;
+};
+
+export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(({
   image,
   annotations,
   selectedAnnotationId,
@@ -23,7 +30,7 @@ export const ImageCanvas = ({
   onZoomIn,
   onZoomOut,
   onResetView
-}: ImageCanvasProps) => {
+}: ImageCanvasProps, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
@@ -34,6 +41,7 @@ export const ImageCanvas = ({
   const [newBbox, setNewBbox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [isPanMode, setIsPanMode] = useState(false);
 
   // Color palette for different bounding boxes
   const bboxColors = [
@@ -181,7 +189,7 @@ export const ImageCanvas = ({
   };
 
   const zoomIn = () => {
-    setScale(prev => Math.min(prev * 1.2, 5));
+    setScale(prev => Math.min(prev * 1.2, 3));
   };
 
   const zoomOut = () => {
@@ -194,13 +202,16 @@ export const ImageCanvas = ({
     }
   };
 
-  const handleWheel = (event: React.WheelEvent) => {
-    event.preventDefault();
-    if (event.deltaY < 0) {
-      zoomIn();
-    } else {
-      zoomOut();
-    }
+  useImperativeHandle(ref, () => ({
+    zoomIn,
+    zoomOut,
+    resetView,
+    setPanMode: (active: boolean) => setIsPanMode(active),
+  }));
+
+  const handleWheel = (_event: React.WheelEvent) => {
+    // Zoom on scroll disabled by request
+    return;
   };
 
   const handleCanvasClick = (event: React.MouseEvent) => {
@@ -226,7 +237,7 @@ export const ImageCanvas = ({
       setDragStart(coords);
       setIsDragging(true);
       setNewBbox({ x: coords.x, y: coords.y, width: 0, height: 0 });
-    } else if (tool === "select" && event.button === 1) { // Middle mouse button for panning
+    } else if (tool === "select" && (event.button === 1 || (isPanMode && event.button === 0))) { // Middle button or left button in pan mode
       const coords = { x: event.clientX, y: event.clientY };
       setPanStart(coords);
       setIsPanning(true);
@@ -302,4 +313,4 @@ export const ImageCanvas = ({
       </div>
     </div>
   );
-};
+});

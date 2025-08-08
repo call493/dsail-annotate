@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { ImageUploader } from "./ImageUploader";
-import { ImageCanvas } from "./ImageCanvas";
+import { ImageCanvas, type ImageCanvasHandle } from "./ImageCanvas";
 import { AnnotationSidebar } from "./AnnotationSidebar";
 import { Toolbar } from "./Toolbar";
 import { ModelSelectionDialog } from "./ModelSelectionDialog";

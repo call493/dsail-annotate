@@ -19,6 +19,8 @@ interface ToolbarProps {
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onResetView?: () => void;
+  onTogglePan?: () => void;
+  panActive?: boolean;
 }
 
 export const Toolbar = ({ 
@@ -27,7 +29,9 @@ export const Toolbar = ({
   disabled = false, 
   onZoomIn, 
   onZoomOut, 
-  onResetView 
+  onResetView,
+  onTogglePan,
+  panActive
 }: ToolbarProps) => {
   const tools = [
     {
@@ -110,11 +114,11 @@ export const Toolbar = ({
             </Button>
             
             <Button
-              variant="ghost"
+              variant={panActive ? "default" : "ghost"}
               size="sm"
               disabled={disabled}
-              onClick={onResetView}
-              title="Fit to Screen (F)"
+              onClick={onTogglePan}
+              title={panActive ? "Disable Pan Mode" : "Enable Pan Mode"}
             >
               <Move className="w-4 h-4" />
             </Button>
