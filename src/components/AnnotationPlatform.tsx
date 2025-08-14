@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { ImageUploader } from "./ImageUploader";
 import { ImageCanvas, type ImageCanvasHandle } from "./ImageCanvas";
 import { AnnotationSidebar } from "./AnnotationSidebar";
@@ -29,19 +29,16 @@ export interface AnnotationPlatformState {
   selectedAnnotationId: string | null;
   isProcessing: boolean;
   tool: "select" | "bbox" | "edit";
-  panActive?: boolean;
 }
 
 export const AnnotationPlatform = () => {
-  const canvasRef = useRef<ImageCanvasHandle>(null);
   const [state, setState] = useState<AnnotationPlatformState>({
     image: null,
     imageFile: null,
     annotations: [],
     selectedAnnotationId: null,
     isProcessing: false,
-    tool: "select",
-    panActive: false
+    tool: "select"
   });
 
   const updateState = (updates: Partial<AnnotationPlatformState>) => {
@@ -224,15 +221,6 @@ export const AnnotationPlatform = () => {
           <Toolbar 
             tool={state.tool}
             onToolChange={(tool) => updateState({ tool })}
-            onZoomIn={() => canvasRef.current?.zoomIn()}
-            onZoomOut={() => canvasRef.current?.zoomOut()}
-            onResetView={() => canvasRef.current?.resetView()}
-            onTogglePan={() => {
-              const newPanState = !state.panActive;
-              updateState({ panActive: newPanState });
-              canvasRef.current?.setPanMode(newPanState);
-            }}
-            panActive={state.panActive}
             disabled={!state.image}
           />
 
@@ -240,7 +228,6 @@ export const AnnotationPlatform = () => {
           <div className="flex-1 p-6">
             {state.image ? (
               <ImageCanvas
-                ref={canvasRef}
                 image={state.image}
                 annotations={state.annotations}
                 selectedAnnotationId={state.selectedAnnotationId}
