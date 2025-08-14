@@ -41,6 +41,9 @@ export const AnnotationPlatform = () => {
     tool: "select"
   });
 
+  const canvasRef = useRef<ImageCanvasHandle>(null);
+  const [panActive, setPanActive] = useState(false);
+
   const updateState = (updates: Partial<AnnotationPlatformState>) => {
     setState(prev => ({ ...prev, ...updates }));
   };
@@ -142,6 +145,24 @@ export const AnnotationPlatform = () => {
     toast.success("Annotations exported successfully");
   };
 
+  const handleZoomIn = () => {
+    canvasRef.current?.zoomIn();
+  };
+
+  const handleZoomOut = () => {
+    canvasRef.current?.zoomOut();
+  };
+
+  const handleResetView = () => {
+    canvasRef.current?.resetView();
+  };
+
+  const handleTogglePan = () => {
+    const newPanState = !panActive;
+    setPanActive(newPanState);
+    canvasRef.current?.setPanMode(newPanState);
+  };
+
   return (
     <div className="min-h-screen bg-workspace-bg">
       {/* Header */}
@@ -222,21 +243,27 @@ export const AnnotationPlatform = () => {
             tool={state.tool}
             onToolChange={(tool) => updateState({ tool })}
             disabled={!state.image}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onResetView={handleResetView}
+            onTogglePan={handleTogglePan}
+            panActive={panActive}
           />
 
           {/* Canvas */}
           <div className="flex-1 p-6">
             {state.image ? (
               <ImageCanvas
+                ref={canvasRef}
                 image={state.image}
                 annotations={state.annotations}
                 selectedAnnotationId={state.selectedAnnotationId}
                 tool={state.tool}
                 onAnnotationSelect={(id) => updateState({ selectedAnnotationId: id })}
                 onAnnotationUpdate={(annotations) => updateState({ annotations })}
-                onZoomIn={() => {}}
-                onZoomOut={() => {}}
-                onResetView={() => {}}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+                onResetView={handleResetView}
               />
             ) : (
               <ImageUploader onImageUpload={handleImageUpload} />
