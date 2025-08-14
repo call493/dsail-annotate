@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { BatchImageUploader } from "./BatchImageUploader";
 import { ImageGrid } from "./ImageGrid";
-import { ImageCanvas } from "./ImageCanvas";
+import { ImageCanvas, type ImageCanvasHandle } from "./ImageCanvas";
 import { AnnotationSidebar } from "./AnnotationSidebar";
 import { Toolbar } from "./Toolbar";
 import { BatchProgress } from "./BatchProgress";
@@ -14,7 +14,9 @@ import { Button } from "./ui/button";
 import { Download, Play, Trash2, RotateCcw, Grid, Image as ImageIcon } from "lucide-react";
 
 export const BatchAnnotationPlatform = () => {
+  const canvasRef = useRef<ImageCanvasHandle>(null);
   const [showProgress, setShowProgress] = useState(false);
+  const [panActive, setPanActive] = useState(false);
   const [state, setState] = useState<BatchAnnotationState>({
     images: [],
     currentImageId: null,
@@ -299,12 +301,22 @@ export const BatchAnnotationPlatform = () => {
                     <Toolbar 
                       tool={tool}
                       onToolChange={setTool}
+                      onZoomIn={() => canvasRef.current?.zoomIn()}
+                      onZoomOut={() => canvasRef.current?.zoomOut()}
+                      onResetView={() => canvasRef.current?.resetView()}
+                      onTogglePan={() => {
+                        const newPanState = !panActive;
+                        setPanActive(newPanState);
+                        canvasRef.current?.setPanMode(newPanState);
+                      }}
+                      panActive={panActive}
                       disabled={false}
                     />
                     
                     <div className="flex flex-1">
                       <div className="flex-1 p-6">
                         <ImageCanvas
+                          ref={canvasRef}
                           image={currentImage.url}
                           annotations={currentImage.annotations}
                           selectedAnnotationId={null}
@@ -339,6 +351,15 @@ export const BatchAnnotationPlatform = () => {
                 <Toolbar 
                   tool={tool}
                   onToolChange={setTool}
+                  onZoomIn={() => canvasRef.current?.zoomIn()}
+                  onZoomOut={() => canvasRef.current?.zoomOut()}
+                  onResetView={() => canvasRef.current?.resetView()}
+                  onTogglePan={() => {
+                    const newPanState = !panActive;
+                    setPanActive(newPanState);
+                    canvasRef.current?.setPanMode(newPanState);
+                  }}
+                  panActive={panActive}
                   disabled={false}
                 />
                 
@@ -354,6 +375,7 @@ export const BatchAnnotationPlatform = () => {
                   
                   <div className="flex-1 p-6">
                     <ImageCanvas
+                      ref={canvasRef}
                       image={currentImage.url}
                       annotations={currentImage.annotations}
                       selectedAnnotationId={null}
