@@ -17,27 +17,37 @@ export const useBatchProcessing = () => {
     return { total, completed, failed, processing, percentage };
   };
 
-  const processImage = async (
-    imageData: ImageData, 
+  const processBatchParallel = async (
+    images: ImageData[],
     model: string,
     updateImage: (id: string, updates: Partial<ImageData>) => void
   ): Promise<void> => {
     if (shouldCancel) return;
+    
     try {
-      updateImage(imageData.id, { status: 'processing', progress: 0 });
+      // Mark all images as processing
+      images.forEach(img => {
+        updateImage(img.id, { status: 'processing', progress: 10 });
+      });
 
       const formData = new FormData();
-      formData.append("image", imageData.file);
       formData.append("model", model);
+      
+      // Add all images to form data
+      images.forEach((imageData, index) => {
+        formData.append(`image_${index}`, imageData.file);
+      });
 
-      // Simulate progress updates
+      // Simulate progress updates for all images
       const progressInterval = setInterval(() => {
-        updateImage(imageData.id, { 
-          progress: Math.min(imageData.progress + Math.random() * 20, 90) 
+        images.forEach(img => {
+          updateImage(img.id, { 
+            progress: Math.min(img.progress + Math.random() * 15, 85) 
+          });
         });
-      }, 500);
+      }, 800);
 
-      const response = await fetch("/api/detect", {
+      const response = await fetch("/api/detect-batch", {
         method: "POST",
         body: formData,
       });
@@ -49,29 +59,47 @@ export const useBatchProcessing = () => {
           throw new Error("Backend server is not running. Please start the Flask server on port 5000.");
         }
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Detection failed: ${response.statusText}`);
+        throw new Error(errorData.error || `Batch detection failed: ${response.statusText}`);
       }
 
       const result = await response.json();
-      updateImage(imageData.id, {
-        status: 'completed',
-        progress: 100,
-        annotations: result.annotations || []
+      
+      // Update each image with its results
+      result.results.forEach((imageResult: any) => {
+        const imageData = images.find(img => img.name === imageResult.image_name);
+        if (imageData) {
+          if (imageResult.error) {
+            updateImage(imageData.id, {
+              status: 'failed',
+              progress: 0
+            });
+          } else {
+            updateImage(imageData.id, {
+              status: 'completed',
+              progress: 100,
+              annotations: imageResult.annotations || []
+            });
+          }
+        }
       });
+      
     } catch (error) {
-      updateImage(imageData.id, {
-        status: 'failed',
-        progress: 0
+      // Mark all images as failed
+      images.forEach(img => {
+        updateImage(img.id, {
+          status: 'failed',
+          progress: 0
+        });
       });
-      console.error(`Failed to process ${imageData.name}:`, error);
+      console.error("Failed to process batch:", error);
+      throw error;
     }
   };
 
   const processBatch = useCallback(async (
     images: ImageData[],
     model: string,
-    updateImage: (id: string, updates: Partial<ImageData>) => void,
-    concurrency: number = 3
+    updateImage: (id: string, updates: Partial<ImageData>) => void
   ) => {
     if (isProcessing) {
       toast.error("Batch processing already in progress");
@@ -79,27 +107,13 @@ export const useBatchProcessing = () => {
     }
 
     setIsProcessing(true);
-    toast.info(`Starting batch processing of ${images.length} images...`);
+    toast.info(`Starting parallel batch processing of ${images.length} images...`);
 
     const pendingImages = images.filter(img => img.status === 'pending');
     setProcessingQueue(pendingImages.map(img => img.id));
 
     try {
-      // Process images in batches with limited concurrency
-      for (let i = 0; i < pendingImages.length; i += concurrency) {
-        if (shouldCancel) {
-          toast.info("Batch processing cancelled");
-          break;
-        }
-        
-        const batch = pendingImages.slice(i, i + concurrency);
-        
-        await Promise.all(
-          batch.map(imageData => 
-            processImage(imageData, model, updateImage)
-          )
-        );
-      }
+      await processBatchParallel(pendingImages, model, updateImage);
 
       if (!shouldCancel) {
         const finalProgress = calculateProgress(images);

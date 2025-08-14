@@ -3,6 +3,9 @@ from flask_cors import CORS
 from ultralytics import YOLO
 import tempfile
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
+import uuid
 
 app = Flask(__name__)
 CORS(app) 
@@ -108,6 +111,113 @@ def detect():
             except:
                 pass
         return jsonify({"error": f"Detection failed: {str(e)}"}), 500
+
+def process_single_image(image_file, model_id, image_name):
+    """Process a single image and return annotations"""
+    if model_id not in loaded_models:
+        return {
+            "image_name": image_name,
+            "error": "Invalid or unavailable model",
+            "annotations": []
+        }
+    
+    selected_model = loaded_models[model_id]
+    
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp:
+            image_file.save(temp.name)
+            results = selected_model(temp.name)
+            annotations = []
+            
+            if results[0].boxes is not None:
+                for i, box in enumerate(results[0].boxes):
+                    x1, y1, x2, y2 = box.xyxy[0].tolist()
+                    label = results[0].names[int(box.cls[0])]
+                    confidence = float(box.conf[0])
+                    annotations.append({
+                        "id": f"ai-{uuid.uuid4().hex[:8]}",
+                        "label": label,
+                        "confidence": confidence,
+                        "bbox": {
+                            "x": int(x1),
+                            "y": int(y1),
+                            "width": int(x2-x1),
+                            "height": int(y2-y1)
+                        },
+                        "source": "ai",
+                        "visible": True
+                    })
+        
+        os.remove(temp.name)
+        return {
+            "image_name": image_name,
+            "annotations": annotations,
+            "error": None
+        }
+    
+    except Exception as e:
+        if 'temp' in locals():
+            try:
+                os.remove(temp.name)
+            except:
+                pass
+        return {
+            "image_name": image_name,
+            "error": f"Detection failed: {str(e)}",
+            "annotations": []
+        }
+
+@app.route("/api/detect-batch", methods=["POST"])
+def detect_batch():
+    """Process multiple images in parallel"""
+    if not request.files:
+        return jsonify({"error": "No images uploaded"}), 400
+
+    if not loaded_models:
+        return jsonify({"error": "No models available"}), 500
+
+    # Get selected model (default to first available)
+    model_id = request.form.get("model", list(loaded_models.keys())[0])
+    
+    if not model_id or model_id not in loaded_models:
+        return jsonify({"error": "Invalid or unavailable model"}), 400
+
+    # Get all uploaded images
+    images = []
+    for key in request.files:
+        if key.startswith('image_'):
+            file = request.files[key]
+            if file.filename:
+                images.append((file, file.filename))
+
+    if not images:
+        return jsonify({"error": "No valid images found"}), 400
+
+    # Process images in parallel
+    max_workers = min(len(images), 4)  # Limit to 4 concurrent processes
+    results = []
+    
+    try:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_image = {
+                executor.submit(process_single_image, img_file, model_id, img_name): img_name 
+                for img_file, img_name in images
+            }
+            
+            # Collect results
+            for future in future_to_image:
+                result = future.result()
+                results.append(result)
+        
+        return jsonify({
+            "results": results,
+            "model_used": MODELS[model_id]["name"],
+            "total_processed": len(results)
+        })
+    
+    except Exception as e:
+        return jsonify({"error": f"Batch processing failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
     if not loaded_models:
